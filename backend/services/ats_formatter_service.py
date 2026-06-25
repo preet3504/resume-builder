@@ -1,0 +1,2 @@
+class ATSFormatterService:
+    pass

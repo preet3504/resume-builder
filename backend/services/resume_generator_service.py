@@ -1,0 +1,2 @@
+class ResumeGeneratorService:
+    pass
