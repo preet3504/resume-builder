@@ -1,6 +1,9 @@
 # ResumeTailor - ATS Resume Optimizer
 ## Project Context for Claude Code Sessions
 
+### Hard Rule
+**Always update this CLAUDE.md file whenever new functionality is added, significant changes are made, or important project details change.** This ensures the context remains accurate for all future sessions.
+
 ### Project Overview
 ResumeTailor is an intelligent, AI-powered web application that helps job seekers create highly optimized, ATS-friendly resumes tailored to specific job descriptions. Users upload their existing resume and provide a target job description, and the system generates a new, professional resume optimized for Applicant Tracking Systems.
 
@@ -58,18 +61,25 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
   - GenerateButton component (triggers optimization process)
   - ProcessingStatus component (spinner/progress indicator)
   - DownloadButtons component (PDF/DOCX download buttons)
+- **Additional**:
+  - Custom hooks (useApi, useFormState) in lib/
+  - API utility in lib/api.ts
 
 #### Backend (FastAPI)
 - **Framework**: FastAPI for high-performance async API
 - **Endpoints**:
-  - `POST /generate-optimized-resume` - accepts PDF/DOCX resume and job description text, returns optimized resume files
-  - `GET /download/{format}/{id}` - serves generated resume files (fallback for direct download)
+  - `POST /api/v1/generate-optimized-resume` - accepts PDF/DOCX resume and job description text, returns optimized resume files
+  - `GET /api/v1/download/{format}/{id}` - serves generated resume files (fallback for direct download)
 - **Services**:
   - ResumeParserService (PyMuPDF + python-docx)
   - JobDescriptionAnalyzerService (NLP/LLM-based)
   - ResumeTailorService (LLM-powered rewriting and optimization)
   - ATSFormatterService (ensures ATS compliance)
   - ResumeGeneratorService (creates PDF/DOCX outputs)
+- **Additional**:
+  - Configuration management via pydantic Settings
+  - Data models (Experience, Education, ResumeData)
+  - Utility functions for file handling
 
 #### AI Layer
 - **Primary Model**: Groq Llama 3.3 70B (for speed) or Hugging Face Llama 3.1/3.3 8B (for privacy)
@@ -87,7 +97,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **DOCX Generation**: python-docx for formatted Word documents
 
 ### Data Flow
-1. User uploads resume (PDF/DOCX) and enters job description → Frontend sends both to backend `/generate-optimized-resume`
+1. User uploads resume (PDF/DOCX) and enters job description → Frontend sends both to backend `/api/v1/generate-optimized-resume`
 2. Backend extracts resume data and analyzes job description → Processes with LLM to optimize resume
 3. Backend generates PDF/DOCX files → Returns download URLs or streams files directly
 4. Frontend shows download buttons → User downloads preferred format (PDF and/or DOCX)
@@ -113,7 +123,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 #### Technical Constraints:
 - Support PDF and DOCX upload formats
 - Support PDF and DOCX output formats
-- Single API endpoint for resume generation (`/generate-optimized-resume`)
+- Single API endpoint for resume generation (`/api/v1/generate-optimized-resume`)
 - Processing time under 8 seconds for typical resumes
 - No permanent storage of user data (temporary files only)
 - File type validation for security
@@ -129,28 +139,25 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - User satisfaction surveys
 - Reduction in job application rejection rates (qualitative feedback)
 
-### File Structure Reference
-```
-resume-tailor/
-├── src/                    # Frontend Next.js application
-│   ├── app/                # App router pages and layouts
-│   ├── components/         # Reusable React components
-│   ├── lib/                # Utility functions and API clients
-│   ├── types/              # TypeScript type definitions
-│   └── public/             # Static assets
-├── backend/                # Backend FastAPI application
-│   ├── main.py             # Application entry point
-│   ├── api/                # API route definitions
-│   ├── core/               # Configuration and exception handling
-│   ├── models/             # Pydantic data models
-│   ├── services/           # Business logic services
-│   ├── utils/              # Utility functions
-│   └── tests/              # Unit and integration tests
-├── .env.example            # Frontend environment variables template
-├── backend/.env.example    # Backend environment variables template
-├── package.json            # Frontend dependencies and scripts
-├── requirements.txt        # Backend Python dependencies
-└── README.md               # Project overview and setup instructions
-```
+### Current State (as of this session)
+- **Implementation Status**: Initial project structure created with frontend and backend stubs.
+- **Files Present**: 
+  - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
+  - Frontend: Next.js app with components, hooks, and page structure (`frontend/app/`, `frontend/components/`, `frontend/lib/`)
+  - Backend: FastAPI app with API routes, config, models, services, and utilities (`backend/main.py`, `backend/api/`, `backend/core/`, `backend/models/`, `backend/services/`, `backend/utils/`)
+  - Environment templates: `backend/.env.example`
+  - Dependency files: `frontend/package.json`, `backend/requirements.txt`
+- **Git Status**: 
+  - Last commit added design documents and CLAUDE.md.
+  - Current branch: `main` (up to date with origin/main).
+  - Recent changes include project structure setup and initial component/backend stubs.
 
-This CLAUDE.md file should provide complete context for any future Claude Code sessions working on the ResumeTailor project.
+### How to Use This CLAUDE.md
+This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:
+1. The overall project goals and boundaries
+2. What has been implemented so far (to avoid rework)
+3. What remains to be built
+4. Technical constraints and success criteria
+
+When starting a new task, refer to the "Current State" and "In Scope"/"Out of Scope" sections to ensure alignment with project goals.
+Remember the **Hard Rule**: Always update this file when new functionality is added or important changes occur.
