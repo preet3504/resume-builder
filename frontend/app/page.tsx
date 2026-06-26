@@ -11,30 +11,36 @@ import DownloadButtons from '@/components/DownloadButtons';
 export default function Home() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
-  const [{ data, loading, error }, { execute }] = useApi<any>();
+  const [{ data, loading, error: apiError }, { execute }] = useApi<any>();
   const [isGenerated, setIsGenerated] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Handle resume upload
   const handleResumeChange = (file: File | null) => {
     setResumeFile(file);
+    setFormError(null); // Clear error when user uploads a new file
   };
 
   // Handle job description change
   const handleJobDescriptionChange = (text: string) => {
     setJobDescription(text);
+    setFormError(null); // Clear error when user types
   };
 
   // Handle generate button click
   const handleGenerateClick = async () => {
     if (!resumeFile) {
-      setError('Please upload a resume');
+      setFormError('Please upload a resume');
       return;
     }
 
     if (!jobDescription.trim()) {
-      setError('Please enter a job description');
+      setFormError('Please enter a job description');
       return;
     }
+
+    // Clear form error before API call
+    setFormError(null);
 
     // Create form data
     const formData = new FormData();
@@ -54,7 +60,7 @@ export default function Home() {
       // For now, we'll just simulate success
       setIsGenerated(true);
     } catch (err) {
-      // Error is handled by the useApi hook
+      // Error is handled by the useApi hook (will be in apiError)
     }
   };
 
@@ -63,6 +69,7 @@ export default function Home() {
     setResumeFile(null);
     setJobDescription('');
     setIsGenerated(false);
+    setFormError(null);
   };
 
   return (
@@ -76,9 +83,9 @@ export default function Home() {
           description
         </p>
 
-        {error && (
+        {(formError || apiError) && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
-            {error}
+            {formError || apiError}
           </div>
         )}
 

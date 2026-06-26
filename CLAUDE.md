@@ -140,7 +140,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - Reduction in job application rejection rates (qualitative feedback)
 
 ### Current State (as of this session)
-- **Implementation Status**: Initial project structure created with frontend and backend stubs.
+- **Implementation Status**: Initial project structure created with frontend and backend stubs. Backend dependencies updated: removed weasyprint (due to Windows compatibility) and removed version specifiers for flexibility. Fixed pydantic BaseSettings import to use pydantic-settings package.
 - **Files Present**: 
   - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
   - Frontend: Next.js app with components, hooks, and page structure (`frontend/app/`, `frontend/components/`, `frontend/lib/`)
@@ -150,7 +150,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Git Status**: 
   - Last commit added design documents and CLAUDE.md.
   - Current branch: `main` (up to date with origin/main).
-  - Recent changes include project structure setup and initial component/backend stubs.
+  - Recent changes include project structure setup, initial component/backend stubs, dependency updates, and configuration fix.
 
 ### How to Use This CLAUDE.md
 This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:

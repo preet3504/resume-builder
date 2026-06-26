@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function DownloadButtons() {
+export default function DownloadButtons({ onReset }: { onReset: () => void }) {
   const [isPreparing, setIsPreparing] = useState(false);
 
   const handleDownloadPDF = async () => {
@@ -12,6 +12,8 @@ export default function DownloadButtons() {
     setIsPreparing(false);
     // In a real app: window.open(pdfUrl);
     alert('PDF download would start here');
+    // Optionally call onReset after download?
+    // onReset();
   };
 
   const handleDownloadDOCX = async () => {
@@ -21,6 +23,8 @@ export default function DownloadButtons() {
     setIsPreparing(false);
     // In a real app: window.open(docxUrl);
     alert('DOCX download would start here');
+    // Optionally call onReset after download?
+    // onReset();
   };
 
   return (
