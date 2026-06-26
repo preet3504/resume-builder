@@ -72,12 +72,13 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 
 ### AI Layer
 - **Primary Model**: Groq Llama 3.3 70B (for speed) or Hugging Face Llama 3.1/3.3 8B (for privacy)
+- **Framework**: LangChain for LLM orchestration and prompt management
 - **Functions**:
   - Keyword extraction from job descriptions
   - Content rewriting and optimization
   - Relevancy scoring and section prioritization
   - ATS-friendly phrasing suggestions
-- **Prompt Engineering**: Carefully crafted prompts for each task to ensure quality outputs
+- **Prompt Engineering**: Carefully crafted prompts for each task to ensure quality outputs using LangChain prompt templates
 
 ### Document Processing
 - **PDF Processing**: PyMuPDF (fitz) for text extraction with positional information

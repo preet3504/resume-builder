@@ -83,12 +83,13 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 
 #### AI Layer
 - **Primary Model**: Groq Llama 3.3 70B (for speed) or Hugging Face Llama 3.1/3.3 8B (for privacy)
+- **Framework**: LangChain for LLM orchestration and prompt management
 - **Functions**:
   - Keyword extraction from job descriptions
   - Content rewriting and optimization
   - Relevancy scoring and section prioritization
   - ATS-friendly phrasing suggestions
-- **Prompt Engineering**: Carefully crafted prompts for each task to ensure quality outputs
+- **Prompt Engineering**: Carefully crafted prompts for each task to ensure quality outputs using LangChain prompt templates
 
 #### Document Processing
 - **PDF Processing**: PyMuPDF (fitz) for text extraction with positional information
@@ -140,7 +141,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - Reduction in job application rejection rates (qualitative feedback)
 
 ### Current State (as of this session)
-- **Implementation Status**: Initial project structure created with frontend and backend stubs. Backend dependencies updated: removed weasyprint (due to Windows compatibility) and removed version specifiers for flexibility. Fixed pydantic BaseSettings import to use pydantic-settings package. **Phase 1 complete: Dependencies updated and installed, upload/generated directories created and added to .gitignore.**
+- **Implementation Status**: Initial project structure created with frontend and backend stubs. Backend dependencies updated: removed weasyprint (due to Windows compatibility) and removed version specifiers for flexibility. Fixed pydantic BaseSettings import to use pydantic-settings package. Added LangChain dependencies for LLM orchestration. **Phase 1 complete: Dependencies updated and installed, upload/generated directories created and added to .gitignore.**
 - **Files Present**: 
   - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
   - Frontend: Next.js app with components, hooks, and page structure (`frontend/app/`, `frontend/components/`, `frontend/lib/`)
@@ -151,7 +152,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Git Status**: 
   - Last commit added design documents and CLAUDE.md.
   - Current branch: `main` (up to date with origin/main).
-  - Recent changes include project structure setup, initial component/backend stubs, dependency updates, configuration fix, and Phase 1 backend setup (dependencies, directories, .gitignore).
+  - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, and Phase 1 backend setup (dependencies, directories, .gitignore).
 
 ### How to Use This CLAUDE.md
 This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:

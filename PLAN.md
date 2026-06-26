@@ -18,6 +18,10 @@ This plan outlines the phased implementation of the backend for the ResumeTailor
    - groq (for Groq API)
    - huggingface-hub (for Hugging Face API)
    - python-multipart (for handling file uploads)
+   - langchain (for LLM framework and utilities)
+   - langchain-community (for community integrations)
+   - langchain-groq (for Groq integration)
+   - langchain-text-splitters (for text processing)
 2. Install dependencies in the backend virtual environment.
 3. Create necessary directories for file handling:
    - `backend/uploads` (for temporary storage of uploaded resumes)
@@ -84,13 +88,15 @@ Update the "Current State" section to note that job description analysis is func
 
 ### Tasks:
 1. Create an LLM utility in `backend/utils/llm.py`:
-   - Support for both Groq (Llama 3.3 70B) and Hugging Face (Llama 3.1/3.3 8B) APIs.
+   - Built using LangChain framework for LLM orchestration
+   - Support for both Groq (Llama 3.3 70B) and Hugging Face (Llama 3.1/3.3 8B) APIs via LangChain integrations
    - Functions for:
-     - Keyword extraction from text (to be used by JobDescriptionAnalyzerService if LLM-based).
-     - Rewriting text to align with given keywords and tone.
-     - Scoring relevance of resume sections to job description.
-     - Generating ATS-friendly phrasing suggestions.
-   - Include error handling, retry logic, and fallback mechanisms.
+     - Keyword extraction from text (to be used by JobDescriptionAnalyzerService if LLM-based)
+     - Rewriting text to align with given keywords and tone
+     - Scoring relevance of resume sections to job description
+     - Generating ATS-friendly phrasing suggestions
+   - Include error handling, retry logic, and fallback mechanisms
+   - Utilize LangChain prompt templates for consistent, high-quality outputs
 2. Implement ResumeTailorService:
    - Take parsed resume data and analyzed job description as input.
    - Use the LLM utility to:
@@ -103,7 +109,7 @@ Update the "Current State" section to note that job description analysis is func
    - Output a tailored `ResumeData` object.
 
 ### Success Criteria:
-- The LLM utility can successfully communicate with both Groq and Hugging Face APIs (with API keys configured).
+- The LLM utility (built with LangChain) can successfully communicate with both Groq and Hugging Face APIs (with API keys configured).
 - The ResumeTailorService produces tailored resumes that maintain original facts while improving relevance to the job description.
 - Unit tests (with mocked LLM responses) verify the tailoring logic.
 

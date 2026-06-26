@@ -60,6 +60,10 @@ This is the backend for the ResumeTailor application, built with FastAPI.
 - huggingface_hub
 - pydantic
 - python-dotenv
+- langchain
+- langchain-community
+- langchain-groq
+- langchain-text-splitters
 
 See `requirements.txt` for the exact versions.
 
@@ -67,6 +71,20 @@ See `requirements.txt` for the exact versions.
 
 - `GROQ_API_KEY`: API key for Groq (used for Llama 3.3 70B model).
 - `HF_API_TOKEN`: API token for Hugging Face (used for Llama 3.1/3.3 8B model).
+
+These API keys are used by both the direct API clients and LangChain integrations.
+
+## LangChain Integration
+
+The backend uses LangChain for LLM orchestration, providing:
+- Standardized interface to LLMs (Groq and Hugging Face)
+- Prompt templating and management
+- Chains for resume processing workflows
+- Output parsing and validation
+
+This abstraction allows for easy switching between different LLM providers and enhances maintainability.
+
+These API keys are used by both the direct API clients and LangChain integrations.
 
 ## Notes
 
