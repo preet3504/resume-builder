@@ -146,6 +146,8 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Phase 3 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - JobDescriptionAnalyzerService analyzes job description text using LangChain with Groq LLM (llama3-8b-8192) to extract structured information including required skills, preferred skills, experience requirements, education requirements, job responsibilities, industry knowledge, technologies/tools, and soft skills. Integrated with resume parser service in the `/api/v1/generate-optimized-resume` endpoint. Comprehensive test suite created and verified.
 - **Phase 4 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - LLMUtility (`utils/llm.py`) created to handle LangChain integrations (ChatGroq/llama-3.3-70b-versatile) for summary rewriting, experience bullet rewriting, and relevant skill extraction/sorting. `ResumeTailorService` coordinates concurrent LLM calls to process a full `ResumeData` object against the `JobAnalysisResult`. Wired into the `/api/v1/generate-optimized-resume` endpoint.
 - **Phase 5 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ATSFormatterService` implemented to ensure the tailored resume data conforms to ATS-friendly formatting standards (chronological sorting, date standardization, and clean text lists). Wired into the `/api/v1/generate-optimized-resume` endpoint.
+- **Phase 6 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ResumeGeneratorService` implemented to generate ATS-friendly PDF and DOCX resumes from tailored `ResumeData` using ReportLab and python-docx. Files are saved with unique UUIDs in the `backend/generated/` directory. Verified with test data that both PDF and DOCX files are generated correctly and are valid.
+- **Phase 7 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - API routes updated to integrate resume generation and file download. The `/api/v1/generate-optimized-resume` endpoint now returns file IDs for generated PDF and DOCX resumes. The `/api/v1/download/{format}/{file_id}` endpoint serves the generated files. Verified end-to-end flow with test data.
 - **Files Present**: 
   - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
   - Frontend: Next.js app with components, hooks, and page structure (`frontend/app/`, `frontend/components/`, `frontend/lib/`)
@@ -156,8 +158,10 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Git Status**: 
   - Last commit added design documents and CLAUDE.md.
   - Current branch: `main` (up to date with origin/main).
-  - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, and Phase 1 backend setup (dependencies, directories, .gitignore).
+  - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, Phase 1 backend setup (dependencies, directories, .gitignore), Phase 2-5 service implementations, and Phase 6-7 implementation (ResumeGeneratorService and API route updates for generation and download).
 
+
+### How to Use This CLAUDE.md
 ### How to Use This CLAUDE.md
 This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:
 1. The overall project goals and boundaries

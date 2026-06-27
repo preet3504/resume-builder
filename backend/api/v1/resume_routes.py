@@ -3,18 +3,24 @@ Resume API Routes — /api/v1/
 
 Phase 2: ResumeParserService is now wired in.
 Phase 3: JobDescriptionAnalyzerService is now integrated.
-Phases 4-7 will progressively connect remaining services.
+Phase 4: ResumeTailorService is now wired in.
+Phase 5: ATSFormatterService is now wired in.
+Phase 6: ResumeGeneratorService is now wired in.
+Phase 7: Download endpoint implemented.
 """
 
 import logging
+import os
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from services.resume_parser_service import ResumeParserService
 from services.job_description_analyzer_service import JobDescriptionAnalyzerService
 from services.resume_tailor_service import ResumeTailorService
 from services.ats_formatter_service import ATSFormatterService
+from services.resume_generator_service import ResumeGeneratorService
 from models.job_description import JobAnalysisResult
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +38,7 @@ async def generate_optimized_resume(
 ):
     """
     Accepts a resume file (PDF/DOCX) and a job description, processes them
-    through the AI pipeline, and returns download URLs for the optimized resume.
+    through the AI pipeline, and returns file IDs for the generated PDF and DOCX resumes.
     """
     # --- Validate file type ---
     allowed = {".pdf", ".docx"}
@@ -87,8 +93,7 @@ async def generate_optimized_resume(
         job_analysis = JobAnalysisResult()
         logger.warning("Continuing with empty job analysis due to error")
 
-    # --- Phases 4–7 (TODO): Tailor → Format → Generate ---
-    # Phase 4: Tailor the resume
+    # --- Phase 4: Tailor the resume ---
     try:
         logger.info("Starting Phase 4: Tailoring resume...")
         tailored_resume_data = await ResumeTailorService.tailor_resume(resume_data, job_analysis)
@@ -97,8 +102,8 @@ async def generate_optimized_resume(
         logger.exception("Unexpected error while tailoring resume: %s", exc)
         tailored_resume_data = resume_data # Fallback to parsed resume
         logger.warning("Continuing with untailored resume due to error")
-        
-    # Phase 5: Format the tailored resume for ATS standards
+
+    # --- Phase 5: Format the tailored resume for ATS standards ---
     try:
         logger.info("Starting Phase 5: Formatting resume for ATS standards...")
         formatted_resume_data = ATSFormatterService.format_resume(tailored_resume_data)
@@ -108,29 +113,28 @@ async def generate_optimized_resume(
         formatted_resume_data = tailored_resume_data # Fallback
         logger.warning("Continuing with unformatted resume due to error")
 
-    # These will be connected progressively in subsequent phases. (Phases 6-7)
+    # --- Phase 6: Generate PDF and DOCX files ---
+    try:
+        logger.info("Starting Phase 6: Generating PDF and DOCX resumes...")
+        pdf_path = ResumeGeneratorService.generate_pdf(formatted_resume_data)
+        docx_path = ResumeGeneratorService.generate_docx(formatted_resume_data)
+        logger.info("Successfully generated PDF and DOCX resumes.")
 
+        # Extract file IDs from the paths (format: "generated/<uuid>.ext")
+        pdf_file_id = os.path.splitext(os.path.basename(pdf_path))[0]
+        docx_file_id = os.path.splitext(os.path.basename(docx_path))[0]
+    except Exception as exc:
+        logger.exception("Unexpected error while generating resume files: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while generating the resume files.",
+        ) from exc
+
+    # Return the file IDs for download
     return {
-        "message": "Resume tailored successfully (Phases 6–7 pending — file generation coming soon)",
-        "parsed": {
-            "contact_info": formatted_resume_data.contact_info,
-            "summary": formatted_resume_data.summary,
-            "experience_count": len(formatted_resume_data.experience),
-            "education_count": len(formatted_resume_data.education),
-            "skills_count": len(formatted_resume_data.skills),
-            "has_achievements": bool(formatted_resume_data.achievements),
-        },
-        "job_analysis": {
-            "required_skills": job_analysis.required_skills,
-            "preferred_skills": job_analysis.preferred_skills,
-            "experience_requirements": job_analysis.experience_requirements,
-            "education_requirements": job_analysis.education_requirements,
-            "job_responsibilities": job_analysis.job_responsibilities,
-            "industry_knowledge": job_analysis.industry_knowledge,
-            "technologies_tools": job_analysis.technologies_tools,
-            "soft_skills": job_analysis.soft_skills,
-        },
-        "job_description_length": len(job_description.strip()),
+        "message": "Resume optimized and generated successfully",
+        "pdf_file_id": pdf_file_id,
+        "docx_file_id": docx_file_id,
     }
 
 
@@ -141,7 +145,6 @@ async def generate_optimized_resume(
 async def download_resume(format: str, file_id: str):
     """
     Download the generated resume in the requested format (pdf or docx).
-    Will be fully implemented in Phase 7.
     """
     format_lower = format.lower()
     if format_lower not in ("pdf", "docx"):
@@ -150,8 +153,20 @@ async def download_resume(format: str, file_id: str):
             detail=f"Invalid format '{format}'. Must be 'pdf' or 'docx'.",
         )
 
-    # TODO (Phase 7): Retrieve file from generated/ directory and return FileResponse
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Download endpoint will be available after Phase 7 implementation.",
+    # Construct the expected file path
+    filename = f"{file_id}.{format_lower}"
+    file_path = os.path.join(settings.GENERATED_DIR, filename)
+
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File not found for format '{format}' and ID '{file_id}'.",
+        )
+
+    # Return the file as a response
+    return FileResponse(
+        path=file_path,
+        media_type=f'application/{format_lower}',
+        filename=filename
     )
