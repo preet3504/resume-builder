@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from services.resume_parser_service import ResumeParserService
 from services.job_description_analyzer_service import JobDescriptionAnalyzerService
 from services.resume_tailor_service import ResumeTailorService
+from services.ats_formatter_service import ATSFormatterService
 from models.job_description import JobAnalysisResult
 
 logger = logging.getLogger(__name__)
@@ -97,17 +98,27 @@ async def generate_optimized_resume(
         tailored_resume_data = resume_data # Fallback to parsed resume
         logger.warning("Continuing with untailored resume due to error")
         
-    # These will be connected progressively in subsequent phases. (Phases 5-7)
+    # Phase 5: Format the tailored resume for ATS standards
+    try:
+        logger.info("Starting Phase 5: Formatting resume for ATS standards...")
+        formatted_resume_data = ATSFormatterService.format_resume(tailored_resume_data)
+        logger.info("Successfully formatted resume.")
+    except Exception as exc:
+        logger.exception("Unexpected error while formatting resume: %s", exc)
+        formatted_resume_data = tailored_resume_data # Fallback
+        logger.warning("Continuing with unformatted resume due to error")
+
+    # These will be connected progressively in subsequent phases. (Phases 6-7)
 
     return {
-        "message": "Resume tailored successfully (Phases 5–7 pending — file generation coming soon)",
+        "message": "Resume tailored successfully (Phases 6–7 pending — file generation coming soon)",
         "parsed": {
-            "contact_info": tailored_resume_data.contact_info,
-            "summary": tailored_resume_data.summary,
-            "experience_count": len(tailored_resume_data.experience),
-            "education_count": len(tailored_resume_data.education),
-            "skills_count": len(tailored_resume_data.skills),
-            "has_achievements": bool(tailored_resume_data.achievements),
+            "contact_info": formatted_resume_data.contact_info,
+            "summary": formatted_resume_data.summary,
+            "experience_count": len(formatted_resume_data.experience),
+            "education_count": len(formatted_resume_data.education),
+            "skills_count": len(formatted_resume_data.skills),
+            "has_achievements": bool(formatted_resume_data.achievements),
         },
         "job_analysis": {
             "required_skills": job_analysis.required_skills,
