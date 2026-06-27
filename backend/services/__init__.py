@@ -1,1 +1,2 @@
 # services package
+from .job_description_analyzer_service import JobDescriptionAnalyzerService

@@ -2,7 +2,8 @@
 Resume API Routes — /api/v1/
 
 Phase 2: ResumeParserService is now wired in.
-Phases 3-7 will progressively connect remaining services.
+Phase 3: JobDescriptionAnalyzerService is now integrated.
+Phases 4-7 will progressively connect remaining services.
 """
 
 import logging
@@ -10,6 +11,8 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from services.resume_parser_service import ResumeParserService
+from services.job_description_analyzer_service import JobDescriptionAnalyzerService
+from models.job_description import JobAnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +31,6 @@ async def generate_optimized_resume(
     """
     Accepts a resume file (PDF/DOCX) and a job description, processes them
     through the AI pipeline, and returns download URLs for the optimized resume.
-
-    Current Phase 2 behaviour:
-    - Validates file type
-    - Parses the resume into structured ResumeData
-    - Returns parsed data as confirmation (full pipeline wired in Phase 7)
     """
     # --- Validate file type ---
     allowed = {".pdf", ".docx"}
@@ -72,11 +70,26 @@ async def generate_optimized_resume(
             detail="An unexpected error occurred while parsing the resume.",
         ) from exc
 
-    # --- Phases 3–7 (TODO): Analyze JD → Tailor → Format → Generate ---
+    # --- Phase 3: Analyze the job description ---
+    try:
+        job_analysis: JobAnalysisResult = JobDescriptionAnalyzerService.analyze_job_description(job_description)
+        logger.info(
+            "Analyzed job description: %d required skills, %d preferred skills",
+            len(job_analysis.required_skills),
+            len(job_analysis.preferred_skills),
+        )
+    except Exception as exc:
+        logger.exception("Unexpected error while analyzing job description: %s", exc)
+        # We don't fail the request here - we continue with empty analysis
+        # so the resume parsing still provides value
+        job_analysis = JobAnalysisResult()
+        logger.warning("Continuing with empty job analysis due to error")
+
+    # --- Phases 4–7 (TODO): Tailor → Format → Generate ---
     # These will be connected progressively in subsequent phases.
 
     return {
-        "message": "Resume parsed successfully (Phases 3–7 pending — full pipeline coming soon)",
+        "message": "Resume parsed and job description analyzed (Phases 4–7 pending — full pipeline coming soon)",
         "parsed": {
             "contact_info": resume_data.contact_info,
             "summary": resume_data.summary,
@@ -84,6 +97,16 @@ async def generate_optimized_resume(
             "education_count": len(resume_data.education),
             "skills_count": len(resume_data.skills),
             "has_achievements": bool(resume_data.achievements),
+        },
+        "job_analysis": {
+            "required_skills": job_analysis.required_skills,
+            "preferred_skills": job_analysis.preferred_skills,
+            "experience_requirements": job_analysis.experience_requirements,
+            "education_requirements": job_analysis.education_requirements,
+            "job_responsibilities": job_analysis.job_responsibilities,
+            "industry_knowledge": job_analysis.industry_knowledge,
+            "technologies_tools": job_analysis.technologies_tools,
+            "soft_skills": job_analysis.soft_skills,
         },
         "job_description_length": len(job_description.strip()),
     }
