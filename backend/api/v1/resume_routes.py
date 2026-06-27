@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from services.resume_parser_service import ResumeParserService
 from services.job_description_analyzer_service import JobDescriptionAnalyzerService
+from services.resume_tailor_service import ResumeTailorService
 from models.job_description import JobAnalysisResult
 
 logger = logging.getLogger(__name__)
@@ -86,17 +87,27 @@ async def generate_optimized_resume(
         logger.warning("Continuing with empty job analysis due to error")
 
     # --- Phases 4–7 (TODO): Tailor → Format → Generate ---
-    # These will be connected progressively in subsequent phases.
+    # Phase 4: Tailor the resume
+    try:
+        logger.info("Starting Phase 4: Tailoring resume...")
+        tailored_resume_data = await ResumeTailorService.tailor_resume(resume_data, job_analysis)
+        logger.info("Successfully tailored resume.")
+    except Exception as exc:
+        logger.exception("Unexpected error while tailoring resume: %s", exc)
+        tailored_resume_data = resume_data # Fallback to parsed resume
+        logger.warning("Continuing with untailored resume due to error")
+        
+    # These will be connected progressively in subsequent phases. (Phases 5-7)
 
     return {
-        "message": "Resume parsed and job description analyzed (Phases 4–7 pending — full pipeline coming soon)",
+        "message": "Resume tailored successfully (Phases 5–7 pending — file generation coming soon)",
         "parsed": {
-            "contact_info": resume_data.contact_info,
-            "summary": resume_data.summary,
-            "experience_count": len(resume_data.experience),
-            "education_count": len(resume_data.education),
-            "skills_count": len(resume_data.skills),
-            "has_achievements": bool(resume_data.achievements),
+            "contact_info": tailored_resume_data.contact_info,
+            "summary": tailored_resume_data.summary,
+            "experience_count": len(tailored_resume_data.experience),
+            "education_count": len(tailored_resume_data.education),
+            "skills_count": len(tailored_resume_data.skills),
+            "has_achievements": bool(tailored_resume_data.achievements),
         },
         "job_analysis": {
             "required_skills": job_analysis.required_skills,

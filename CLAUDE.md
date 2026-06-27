@@ -73,7 +73,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Services**:
   - ResumeParserService (PyMuPDF + python-docx) - **PHASE 2: IMPLEMENTED AND VERIFIED**
   - JobDescriptionAnalyzerService (NLP/LLM-based) - **PHASE 3: IMPLEMENTED AND VERIFIED**
-  - ResumeTailorService (LLM-powered rewriting and optimization) - **PLANNED FOR PHASE 4**
+  - ResumeTailorService (LLM-powered rewriting and optimization) - **PHASE 4: IMPLEMENTED AND VERIFIED**
   - ATSFormatterService (ensures ATS compliance) - **PLANNED FOR PHASE 5**
   - ResumeGeneratorService (creates PDF/DOCX outputs) - **PLANNED FOR PHASE 6**
 - **Additional**:
@@ -144,6 +144,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Implementation Status**: Initial project structure created with frontend and backend stubs. Backend dependencies updated: removed weasyprint (due to Windows compatibility) and removed version specifiers for flexibility. Fixed pydantic BaseSettings import to use pydantic-settings package. Added LangChain dependencies for LLM orchestration. **Phase 1 complete: Dependencies updated and installed, upload/generated directories created and added to .gitignore.**
 - **Phase 2 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - ResumeParserService successfully parses PDF and DOCX resumes into structured ResumeData objects using PyMuPDF and python-docx. Section-based parsing with heuristics extracts contact info, summary, experience, education, skills, and achievements. Testing with the provided sample resume (test/preet-ai-engineer.pdf) confirmed the implementation works correctly, extracting meaningful data including contact information, work experience, education, skills, and achievements.
 - **Phase 3 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - JobDescriptionAnalyzerService analyzes job description text using LangChain with Groq LLM (llama3-8b-8192) to extract structured information including required skills, preferred skills, experience requirements, education requirements, job responsibilities, industry knowledge, technologies/tools, and soft skills. Integrated with resume parser service in the `/api/v1/generate-optimized-resume` endpoint. Comprehensive test suite created and verified.
+- **Phase 4 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - LLMUtility (`utils/llm.py`) created to handle LangChain integrations (ChatGroq/llama-3.3-70b-versatile) for summary rewriting, experience bullet rewriting, and relevant skill extraction/sorting. `ResumeTailorService` coordinates concurrent LLM calls to process a full `ResumeData` object against the `JobAnalysisResult`. Wired into the `/api/v1/generate-optimized-resume` endpoint.
 - **Files Present**: 
   - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
   - Frontend: Next.js app with components, hooks, and page structure (`frontend/app/`, `frontend/components/`, `frontend/lib/`)
