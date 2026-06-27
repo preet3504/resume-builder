@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useApi } from '@/lib/api';
 import ResumeUpload from '@/components/ResumeUpload';
 import JobDescriptionInput from '@/components/JobDescriptionInput';
 import GenerateButton from '@/components/GenerateButton';
@@ -11,9 +10,12 @@ import DownloadButtons from '@/components/DownloadButtons';
 export default function Home() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
-  const [{ data, loading, error: apiError }, { execute }] = useApi<any>();
   const [isGenerated, setIsGenerated] = useState(false);
+  const [pdfFileId, setPdfFileId] = useState<string | null>(null);
+  const [docxFileId, setDocxFileId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Handle resume upload
   const handleResumeChange = (file: File | null) => {
@@ -49,18 +51,22 @@ export default function Home() {
 
     try {
       // Call the API
-      await execute(
-        fetch('/api/v1/generate-optimized-resume', {
-          method: 'POST',
-          body: formData,
-        })
-      );
+      const response = await fetch(`${apiUrl}/api/v1/generate-optimized-resume`, {
+        method: 'POST',
+        body: formData,
+      });
 
-      // In a real app, we would get a file ID from the response
-      // For now, we'll just simulate success
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || response.statusText);
+      }
+
+      const result = await response.json();
+      setPdfFileId(result.pdf_file_id ?? null);
+      setDocxFileId(result.docx_file_id ?? null);
       setIsGenerated(true);
-    } catch (err) {
-      // Error is handled by the useApi hook (will be in apiError)
+    } catch (err: any) {
+      setFormError(err.message || 'Unknown error');
     }
   };
 
@@ -69,6 +75,8 @@ export default function Home() {
     setResumeFile(null);
     setJobDescription('');
     setIsGenerated(false);
+    setPdfFileId(null);
+    setDocxFileId(null);
     setFormError(null);
   };
 
@@ -83,9 +91,9 @@ export default function Home() {
           description
         </p>
 
-        {(formError || apiError) && (
+        {(formError) && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
-            {formError || apiError}
+            {formError}
           </div>
         )}
 
@@ -98,18 +106,22 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4">
             <GenerateButton
               onClick={handleGenerateClick}
-              isLoading={loading}
-              disabled={loading || !resumeFile || !jobDescription.trim()}
+              isLoading={false} // We can add loading state if needed
+              disabled={!resumeFile || !jobDescription.trim()}
             />
             <ProcessingStatus
-              isGenerating={loading}
+              isGenerating={false} // We'll manage via state if needed
               isGenerated={isGenerated}
             />
           </div>
           {isGenerated && (
             <div className="mt-8 pt-4 border-t border-gray-200">
               <h2 className="text-xl font-semibold mb-4">Your resume is ready!</h2>
-              <DownloadButtons onReset={handleReset} />
+              <DownloadButtons
+                pdfFileId={pdfFileId}
+                docxFileId={docxFileId}
+                onReset={handleReset}
+              />
             </div>
           )}
         </div>

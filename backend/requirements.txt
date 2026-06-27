@@ -14,3 +14,8 @@ langchain-community==0.3.0
 langchain-groq==0.3.0
 langchain-text-splitters==0.3.0
 python-dateutil==2.9.0.post0
+
+
+# Act as AI engineet which have a 10+ year of experience . First you need to read @CLAUDE.md @PLAN.md and @docs\ folder files for understand project and identify how much implemention is done.
+
+# greate, We need to debug full frontend application because i am not able to upload pdf and also UI also very bad. please check it and correct everything in frontend and make it full funcctional.

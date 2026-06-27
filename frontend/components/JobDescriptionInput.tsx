@@ -20,7 +20,7 @@ export default function JobDescriptionInput({
           onChange={handleChange}
           rows={8}
           placeholder="Paste the complete job description here..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
         />
         <div className="absolute bottom-2 right-2 text-sm text-gray-500">
           {value.length}/10000 characters
