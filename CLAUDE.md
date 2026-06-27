@@ -163,7 +163,6 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
   - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, Phase 1 backend setup (dependencies, directories, .gitignore), Phase 2-5 service implementations, Phase 6-7 implementation (ResumeGeneratorService and API route updates for generation and download), and frontend UI enhancements (drag-and-drop upload, file selection feedback, Tailwind styling fixes).
 
 ### How to Use This CLAUDE.md
-### How to Use This CLAUDE.md
 This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:
 1. The overall project goals and boundaries
 2. What has been implemented so far (to avoid rework)
