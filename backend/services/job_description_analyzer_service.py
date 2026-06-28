@@ -10,7 +10,6 @@ from models.job_description import JobAnalysisResult
 import logging
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from langchain.output_parsers import PydanticOutputParser
 import os
 from dotenv import load_dotenv
@@ -89,14 +88,13 @@ class JobDescriptionAnalyzerService:
                 partial_variables={"format_instructions": parser.get_format_instructions()}
             )
 
-            # Create the LLM chain
-            chain = LLMChain(llm=llm, prompt=prompt)
+            # Build the chain using the modern LCEL syntax (prompt | llm | parser).
+            # The parser runs as part of the chain and returns a JobAnalysisResult.
+            chain = prompt | llm | parser
 
-            # Run the chain and get the result
-            result = chain.run(job_description=job_description)
-
-            # Parse the result into our Pydantic model
-            parsed_result = parser.parse(result)
+            parsed_result: JobAnalysisResult = chain.invoke(
+                {"job_description": job_description}
+            )
 
             logger.info("Successfully analyzed job description using LLM")
             return parsed_result
