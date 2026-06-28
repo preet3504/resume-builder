@@ -9,18 +9,27 @@ export default function DownloadButtons({
   docxFileId: string | null;
   onReset: () => void
 }) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+
+  // Trigger a file download from the backend without navigating the SPA away.
+  const downloadFile = (format: 'pdf' | 'docx', fileId: string) => {
+    const url = `${apiUrl}/api/v1/download/${format}/${fileId}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `optimized-resume.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDownloadPDF = () => {
     if (!pdfFileId) return;
-    window.location.href = `/api/v1/download/pdf/${pdfFileId}`;
-    // Optionally reset after download?
-    // onReset();
+    downloadFile('pdf', pdfFileId);
   };
 
   const handleDownloadDOCX = () => {
     if (!docxFileId) return;
-    window.location.href = `/api/v1/download/docx/${docxFileId}`;
-    // Optionally reset after download?
-    // onReset();
+    downloadFile('docx', docxFileId);
   };
 
   return (

@@ -16,11 +16,19 @@ class Settings(BaseSettings):
 
     # File upload settings
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10 MB
-    ALLOWED_EXTENSIONS: set = {".pdf", ".docx"}
+    # Stored as a comma-separated string. pydantic-settings v2 JSON-decodes
+    # complex types (set/list) from env, so a plain "set" field would reject
+    # a value like ".pdf,.docx". Keep it a str and expose a parsed set below.
+    ALLOWED_EXTENSIONS: str = ".pdf,.docx"
 
     # File storage
     UPLOAD_DIR: str = "uploads"
     GENERATED_DIR: str = "generated"
+
+    @property
+    def allowed_extensions_set(self) -> set[str]:
+        """Parsed set of allowed file extensions (e.g. {'.pdf', '.docx'})."""
+        return {ext.strip().lower() for ext in self.ALLOWED_EXTENSIONS.split(",") if ext.strip()}
 
     class Config:
         env_file = ".env"

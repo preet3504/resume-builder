@@ -11,6 +11,7 @@ export default function Home() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState<string>('');
   const [isGenerated, setIsGenerated] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [pdfFileId, setPdfFileId] = useState<string | null>(null);
   const [docxFileId, setDocxFileId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -41,8 +42,10 @@ export default function Home() {
       return;
     }
 
-    // Clear form error before API call
+    // Clear previous state before the API call
     setFormError(null);
+    setIsGenerated(false);
+    setIsGenerating(true);
 
     // Create form data
     const formData = new FormData();
@@ -57,8 +60,9 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || response.statusText);
+        // FastAPI returns errors under `detail`; fall back to `message`/status text.
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.message || response.statusText);
       }
 
       const result = await response.json();
@@ -67,6 +71,8 @@ export default function Home() {
       setIsGenerated(true);
     } catch (err: any) {
       setFormError(err.message || 'Unknown error');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -106,11 +112,11 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4">
             <GenerateButton
               onClick={handleGenerateClick}
-              isLoading={false} // We can add loading state if needed
-              disabled={!resumeFile || !jobDescription.trim()}
+              isLoading={isGenerating}
+              disabled={!resumeFile || !jobDescription.trim() || isGenerating}
             />
             <ProcessingStatus
-              isGenerating={false} // We'll manage via state if needed
+              isGenerating={isGenerating}
               isGenerated={isGenerated}
             />
           </div>

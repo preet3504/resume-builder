@@ -23,8 +23,10 @@ class LLMUtility:
         # We will use llama-3.3-70b-versatile for complex rewriting
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            logger.warning("GROQ_API_KEY not found in environment variables. LLM operations will fail.")
-            
+            raise RuntimeError(
+                "GROQ_API_KEY is not configured. Set it in backend/.env to enable AI tailoring."
+            )
+
         self.llm = ChatGroq(
             temperature=0.2, 
             groq_api_key=api_key,

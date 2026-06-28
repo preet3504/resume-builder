@@ -79,6 +79,8 @@ async def generate_optimized_resume(
         ) from exc
 
     # --- Phase 3: Analyze the job description ---
+    # The AI analysis is core to this product. If it fails we must NOT pretend
+    # the request succeeded — surface a clear error to the user instead.
     try:
         job_analysis: JobAnalysisResult = JobDescriptionAnalyzerService.analyze_job_description(job_description)
         logger.info(
@@ -87,11 +89,12 @@ async def generate_optimized_resume(
             len(job_analysis.preferred_skills),
         )
     except Exception as exc:
-        logger.exception("Unexpected error while analyzing job description: %s", exc)
-        # We don't fail the request here - we continue with empty analysis
-        # so the resume parsing still provides value
-        job_analysis = JobAnalysisResult()
-        logger.warning("Continuing with empty job analysis due to error")
+        logger.exception("Error while analyzing job description: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to analyze the job description. The AI service may be "
+                   "unavailable or misconfigured (check GROQ_API_KEY).",
+        ) from exc
 
     # --- Phase 4: Tailor the resume ---
     try:
@@ -99,9 +102,12 @@ async def generate_optimized_resume(
         tailored_resume_data = await ResumeTailorService.tailor_resume(resume_data, job_analysis)
         logger.info("Successfully tailored resume.")
     except Exception as exc:
-        logger.exception("Unexpected error while tailoring resume: %s", exc)
-        tailored_resume_data = resume_data # Fallback to parsed resume
-        logger.warning("Continuing with untailored resume due to error")
+        logger.exception("Error while tailoring resume: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to optimize the resume. The AI service may be "
+                   "unavailable or misconfigured (check GROQ_API_KEY).",
+        ) from exc
 
     # --- Phase 5: Format the tailored resume for ATS standards ---
     try:
@@ -109,9 +115,11 @@ async def generate_optimized_resume(
         formatted_resume_data = ATSFormatterService.format_resume(tailored_resume_data)
         logger.info("Successfully formatted resume.")
     except Exception as exc:
-        logger.exception("Unexpected error while formatting resume: %s", exc)
-        formatted_resume_data = tailored_resume_data # Fallback
-        logger.warning("Continuing with unformatted resume due to error")
+        logger.exception("Error while formatting resume: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while formatting the resume.",
+        ) from exc
 
     # --- Phase 6: Generate PDF and DOCX files ---
     try:
