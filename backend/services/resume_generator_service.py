@@ -211,7 +211,7 @@ class ResumeGeneratorService:
 
         # Contact line
         contact_bits = []
-        for key in ["email", "phone", "location"]:
+        for key in ["email", "phone", "location", "linkedin", "github", "website"]:
             val = resume_data.contact_info.get(key)
             if val:
                 contact_bits.append(val)
@@ -342,7 +342,7 @@ class ResumeGeneratorService:
 
         # ---- Contact line (centered, 10pt) -------------------------
         contact_parts = []
-        for key in ["email", "phone", "location"]:
+        for key in ["email", "phone", "location", "linkedin", "github", "website"]:
             val = resume_data.contact_info.get(key)
             if val:
                 contact_parts.append(val)
