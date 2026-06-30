@@ -40,7 +40,7 @@ class LLMUtility:
             
         prompt_template = """
         You are an expert resume writer. Rewrite the following professional summary to highlight the candidate's relevance to the target job.
-        Do NOT fabricate any information. Only emphasize the skills and experiences that align with the job requirements.
+        Do NOT fabricate any information. Only emphasize the skills and experiences that align with the job requirements and in 2-3 lines and that conclude with a strong statement about the candidate's ability to contribute to the company and must include user experience in years.
         
         Original Summary:
         {current_summary}
