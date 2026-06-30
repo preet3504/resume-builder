@@ -13,7 +13,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Resume Upload**: Support for PDF and DOCX formats
   - PDF parsing using PyMuPDF
   - DOCX parsing using python-docx
-  - Extract structured information: experience, skills, education, achievements, contact info
+  - Extract structured information: experience, projects, skills, education, achievements, contact info
 - **Job Description Input**: Text input field for users to paste job descriptions
   - Parse to extract: required skills, qualifications, responsibilities, keywords, industry terminology
 
@@ -35,9 +35,9 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Formatting**:
   - Use standard, ATS-friendly fonts (Arial, Calibri, Helvetica)
   - Clean, simple formatting without tables, columns, graphics, headers/footers
-  - Proper section headings (Experience, Skills, Education, etc.)
+  - Proper section headings (Experience, Projects, Skills, Education, etc.) with underline
   - Chronological order where appropriate
-  - Standard bullet points and spacing
+  - Standard bullet points and spacing (single bullet per item)
 - **File Generation**:
   - Output formats: PDF and DOCX
   - One-click download functionality
@@ -71,14 +71,14 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
   - `POST /api/v1/generate-optimized-resume` - accepts PDF/DOCX resume and job description text, returns optimized resume files
   - `GET /api/v1/download/{format}/{id}` - serves generated resume files (fallback for direct download)
 - **Services**:
-  - ResumeParserService (PyMuPDF + python-docx) - **PHASE 2: IMPLEMENTED AND VERIFIED**
+  - ResumeParserService (PyMuPDF + python-docx) - **PHASE 2: IMPLEMENTED AND VERIFIED** (now extracts projects)
   - JobDescriptionAnalyzerService (NLP/LLM-based) - **PHASE 3: IMPLEMENTED AND VERIFIED**
   - ResumeTailorService (LLM-powered rewriting and optimization) - **PHASE 4: IMPLEMENTED AND VERIFIED**
   - ATSFormatterService (ensures ATS compliance) - **PHASE 5: IMPLEMENTED AND VERIFIED**
-  - ResumeGeneratorService (creates PDF/DOCX outputs) - **PHASE 6: IMPLEMENTED AND VERIFIED**
+  - ResumeGeneratorService (creates PDF/DOCX outputs) - **PHASE 6: IMPLEMENTED AND VERIFIED** (Enhanced layout & typography, includes project section, underlined section headers, single bullet per item)
 - **Additional**:
   - Configuration management via pydantic Settings
-  - Data models (Experience, Education, ResumeData)
+  - Data models (Experience, Education, Project, ResumeData)
   - Utility functions for file handling
 
 #### AI Layer
@@ -94,13 +94,13 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 #### Document Processing
 - **PDF Processing**: PyMuPDF (fitz) for text extraction with positional information
 - **DOCX Processing**: python-docx for structured document parsing
-- **PDF Generation**: ReportLab or WeasyPrint for ATS-friendly PDFs
+- **PDF Generation**: ReportLab for ATS-friendly PDFs
 - **DOCX Generation**: python-docx for formatted Word documents
 
 ### Data Flow
 1. User uploads resume (PDF/DOCX) and enters job description → Frontend sends both to backend `/api/v1/generate-optimized-resume`
-2. Backend extracts resume data and analyzes job description → Processes with LLM to optimize resume
-3. Backend generates PDF/DOCX files → Returns download URLs or streams files directly
+2. Backend extracts resume data (including projects) and analyzes job description → Processes with LLM to optimize resume
+3. Backend generates PDF/DOCX files (with projects section, underlined headings, correct bullets) → Returns download URLs or streams files directly
 4. Frontend shows download buttons → User downloads preferred format (PDF and/or DOCX)
 
 ### Key Constraints & Boundaries
@@ -151,13 +151,22 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
   - **Loading state fixed**: `app/page.tsx` hardcoded `isLoading={false}`/`isGenerating={false}`. Added an `isGenerating` state toggled around the fetch (with `finally`), so the GenerateButton spinner and ProcessingStatus progress bar now display during generation.
   - **LangChain deprecation warnings fixed**: `JobDescriptionAnalyzerService` used the deprecated `LLMChain` + `chain.run` (removed in LangChain 1.0). Replaced with modern LCEL syntax (`chain = prompt | llm | parser` + `chain.invoke(...)`), matching `utils/llm.py`. Note: this was a code-modernization fix, not a package upgrade — the deprecation exists in all current LangChain versions.
 - **Implementation Status**: Frontend and backend are fully functional. All phases (1-7) completed and verified. Tailwind CSS v3 is correctly configured, providing styled UI with drag-and-drop resume upload, file selection feedback, and functional download buttons. The frontend communicates with the backend API at `/api/v1/generate-optimized-resume` and `/api/v1/download/{format}/{id}`. End-to-end flow tested with sample resume and job description.
-- **Phase 1 Status**: **COMPLETE** - Dependencies updated and installed, upload/generated directories created and added to `.gitignore`.
-- **Phase 2 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - ResumeParserService successfully parses PDF and DOCX resumes into structured ResumeData objects using PyMuPDF and python-docx. Section-based parsing with heuristics extracts contact info, summary, experience, education, skills, and achievements. Testing with the provided sample resume (test/preet-ai-engineer.pdf) confirmed the implementation works correctly, extracting meaningful data including contact information, work experience, education, skills, and achievements.
-- **Phase 3 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - JobDescriptionAnalyzerService analyzes job description text using LangChain with Groq LLM (llama3-8b-8192) to extract structured information including required skills, preferred skills, experience requirements, education requirements, job responsibilities, industry knowledge, technologies/tools, and soft skills. Integrated with resume parser service in the `/api/v1/generate-optimized-resume` endpoint. Comprehensive test suite created and verified.
-- **Phase 4 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - LLMUtility (`utils/llm.py`) created to handle LangChain integrations (ChatGroq/llama-3.3-70b-versatile) for summary rewriting, experience bullet rewriting, and relevant skill extraction/sorting. `ResumeTailorService` coordinates concurrent LLM calls to process a full `ResumeData` object against the `JobAnalysisResult`. Wired into the `/api/v1/generate-optimized-resume` endpoint.
-- **Phase 5 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ATSFormatterService` implemented to ensure the tailored resume data conforms to ATS-friendly formatting standards (chronological sorting, date standardization, and clean text lists). Wired into the `/api/v1/generate-optimized-resume` endpoint.
-- **Phase 6 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ResumeGeneratorService` implemented to generate ATS-friendly PDF and DOCX resumes from tailored `ResumeData` using ReportLab and python-docx. Files are saved with unique UUIDs in the `backend/generated/` directory. Verified with test data that both PDF and DOCX files are generated correctly and are valid.
-- **Phase 7 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - API routes updated to integrate resume generation and file download. The `/api/v1/generate-optimized-resume` endpoint now returns file IDs for generated PDF and DOCX resumes. The `/api/v1/download/{format}/{file_id}` endpoint serves the generated files. Frontend fully integrated and verified end-to-end flow with test data.
+- **Recent Enhancements (2026-06-30)**:
+  - **Fixed AI noise in Skills section**: `extract_relevant_skills` in `utils/llm.py` was using `CommaSeparatedListOutputParser` with a loose prompt, causing the LLM to include reasoning sentences that were parsed as skill entries. Fixed with a strict prompt (explicit rule to output ONLY comma-separated skill names) plus a `_is_valid_skill` post-processing filter that rejects entries with periods, sentence structure, or >8 words.
+  - **Added skill category support**: `models/resume.py` gains `skill_categories: Optional[Dict[str, List[str]]]`. `ResumeParserService` now calls `_extract_skill_categories()` to preserve "Category: skill1, skill2" formatting from the original resume. `ResumeTailorService` reorders categories by job relevance (via `reorder_skill_categories` in LLMUtility). `ATSFormatterService` now passes `skill_categories` and `projects` through (they were being silently dropped). `ResumeGeneratorService` renders categorized skills with bold category labels in both PDF and DOCX (matching the "Languages & Frameworks: ..., Databases & Caching: ..." format). Falls back to flat skills list for resumes without categories.
+  - **Fixed projects propagation**: `ResumeTailorService` was not passing `projects` to the tailored `ResumeData`. Fixed.
+- **Recent Enhancements (2026-06-29)**:
+  - **Improved PDF/DOCX layout & typography**: Updated `ResumeGeneratorService` to use ATS‑friendly styling (Helvetica/Calibri, clear hierarchy, consistent spacing, proper margins, standard bullet points, clean date formatting). Generated documents now follow a professional, recruiter‑friendly look while remaining fully ATS‑compatible.
+  - **Added project extraction and generation**: Enhanced `ResumeParserService` to extract a `projects` section from resumes (using heuristics for headings like "Projects", "Key Projects", etc.) and added a `Project` model. Updated `ResumeGeneratorService` to render a "PROJECTS" section (with project titles and bullet‑point descriptions) between Experience and Education, matching the order seen in professional resumes.
+  - **Fixed bullet duplication**: Removed duplicate bullet characters in PDF generation (now using ReportLab's bulletText only) so each bullet appears once.
+  - **Added underlined section headers**: Section headings (e.g., "PROFESSIONAL SUMMARY", "SKILLS", etc.) now display with an underline for improved visual hierarchy.
+  - **Phase 1 Status**: **COMPLETE** - Dependencies updated and installed, upload/generated directories created and added to `.gitignore`.
+  - **Phase 2 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - ResumeParserService successfully parses PDF and DOCX resumes into structured ResumeData objects using PyMuPDF and python-docx. Section-based parsing with heuristics extracts contact info, summary, experience, education, skills, achievements, and **projects**. Testing with the provided sample resume (test/preet-ai-engineer.pdf) confirmed the implementation works correctly, extracting meaningful data including contact information, work experience, education, skills, achievements, and projects.
+  - **Phase 3 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - JobDescriptionAnalyzerService analyzes job description text using LangChain with Groq LLM (llama3-8b-8192) to extract structured information including required skills, preferred skills, experience requirements, education requirements, job responsibilities, industry knowledge, technologies/tools, and soft skills. Integrated with resume parser service in the `/api/v1/generate-optimized-resume` endpoint. Comprehensive test suite created and verified.
+  - **Phase 4 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - LLMUtility (`utils/llm.py`) created to handle LangChain integrations (ChatGroq/llama-3.3-70b-versatile) for summary rewriting, experience bullet rewriting, and relevant skill extraction/sorting. `ResumeTailorService` coordinates concurrent LLM calls to process a full `ResumeData` object against the `JobAnalysisResult`. Wired into the `/api/v1/generate-optimized-resume` endpoint.
+  - **Phase 5 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ATSFormatterService` implemented to ensure the tailored resume data conforms to ATS-friendly formatting standards (chronological sorting, date standardization, and clean text lists). Wired into the `/api/v1/generate-optimized-resume` endpoint.
+  - **Phase 6 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - `ResumeGeneratorService` implemented to generate ATS-friendly PDF and DOCX resumes from tailored `ResumeData` using ReportLab and python-docx. Files are saved with unique UUIDs in the `backend/generated/` directory. Verified with test data that both PDF and DOCX files are generated correctly and are valid, with improved layout and typography **and include a projects section, underlined headings, and correct bullets**.
+  - **Phase 7 Status**: **IMPLEMENTATION COMPLETE AND VERIFIED** - API routes updated to integrate resume generation and file download. The `/api/v1/generate-optimized-resume` endpoint now returns file IDs for generated PDF and DOCX resumes. The `/api/v1/download/{format}/{file_id}` endpoint serves the generated files. Frontend fully integrated and verified end-to-end flow with test data.
 - **Phase 8 Status**: **PLANNED** - Error handling, validation, and testing (to be implemented in subsequent iteration).
 - **Files Present**: 
   - Design specifications: `docs/superpowers/specs/2026-06-25-resume-tailor-design.md`
@@ -169,7 +178,7 @@ ResumeTailor is an intelligent, AI-powered web application that helps job seeker
 - **Git Status**: 
   - Last commit added design documents and CLAUDE.md.
   - Current branch: `main` (up to date with origin/main).
-  - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, Phase 1 backend setup (dependencies, directories, .gitignore), Phase 2-5 service implementations, Phase 6-7 implementation (ResumeGeneratorService and API route updates for generation and download), and frontend UI enhancements (drag-and-drop upload, file selection feedback, Tailwind styling fixes).
+  - Recent changes include project structure setup, initial component/backend stubs, dependency updates (including LangChain), configuration fix, Phase 1 backend setup (dependencies, directories, .gitignore), Phase 2-5 service implementations, **Project extraction added to parser**, **Project section added to generator**, **Bullet duplication fixed**, **Underlined section headers added**, frontend UI enhancements (drag-and-drop upload, file selection feedback, Tailwind styling fixes), and layout/typography improvements for generated resumes.
 
 ### How to Use This CLAUDE.md
 This file serves as the single source of truth for project context in every new Claude Code session. It should be read at the start of each session to understand:
@@ -181,4 +190,4 @@ This file serves as the single source of truth for project context in every new 
 When starting a new task, refer to the "Current State" and "In Scope"/"Out of Scope" sections to ensure alignment with project goals.
 Remember the **Hard Rule**: Always update this file when new functionality is added or important changes occur.
 # currentDate
-Today's date is 2026-06-28.
+Today's date is 2026-06-29.

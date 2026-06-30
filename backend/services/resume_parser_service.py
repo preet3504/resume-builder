@@ -14,7 +14,7 @@ from fastapi import UploadFile
 import fitz  # PyMuPDF
 import docx  # python-docx
 
-from models.resume import ResumeData, Experience, Education
+from models.resume import ResumeData, Experience, Education, Project
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ PHONE_RE = re.compile(
     r"(\+?\d{1,3}[\s.\-]?)?(\(?\d{2,4}\)?[\s.\-]?)?\d{3,4}[\s.\-]?\d{4}"
 )
 URL_RE = re.compile(
-    r"(https?://[^\s]+|(?:www|linkedin\.com|github\.com)[^\s\u00b7\u2022\uf0b7]+)",
+    r"(https?://[^\s]+|(?:www|linkedin\.com|github\.com)[^\s·•]+)",
     re.IGNORECASE,
 )
 # Date ranges like "Jan 2020 – Present", "2019-2021", "Jan 2024 · Present"
@@ -66,7 +66,7 @@ DATE_RANGE_RE = re.compile(
     r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
     r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
     r"Dec(?:ember)?)?\s*,?\s*\d{4})"
-    r"\s*(?:–|-|to|—|·|\u00b7|\uf0b7)\s*"
+    r"\s*(?:–|-|to|—|·|·|)\s*"
     r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
     r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
     r"Dec(?:ember)?)?\s*,?\s*\d{4}|Present|Current|Now)",
@@ -83,7 +83,10 @@ DEGREE_KEYWORDS = [
 SKILL_CATEGORY_RE = re.compile(r"^[A-Za-z ,&/]+:\s*", re.IGNORECASE)
 
 # Bullet characters used in PDFs (unicode + standard)
-BULLET_CHARS = "•●▪-–—*·◦\uf0b7\u00b7\u2022\u25aa\u25cf"
+BULLET_CHARS = "•●▪–—*·◦·•▪●"
+# Additional bullet-like characters that may appear due to PDF extraction issues
+EXTRA_BULLETS = "�"  # replacement char
+ALL_BULLETS = BULLET_CHARS + EXTRA_BULLETS
 
 
 # ===========================================================================
@@ -190,8 +193,11 @@ def _parse_lines(lines: list[str]) -> ResumeData:
     summary = _extract_summary(sections.get("summary", []))
     experience = _extract_experience(sections.get("experience", []))
     education = _extract_education(sections.get("education", []))
-    skills = _extract_skills(sections.get("skills", []))
+    skill_lines = sections.get("skills", [])
+    skills = _extract_skills(skill_lines)
+    skill_categories = _extract_skill_categories(skill_lines)
     achievements = _extract_achievements(sections.get("achievements", []))
+    projects = _extract_projects(sections.get("projects", []))
 
     return ResumeData(
         contact_info=contact_info,
@@ -199,7 +205,9 @@ def _parse_lines(lines: list[str]) -> ResumeData:
         experience=experience,
         education=education,
         skills=skills,
+        skill_categories=skill_categories if skill_categories else None,
         achievements=achievements if achievements else None,
+        projects=projects if projects else None,
     )
 
 
@@ -501,7 +509,7 @@ def _extract_education(lines: list[str]) -> list[Education]:
         if blocks:
             blocks[-1].extend(current)
         else:
-            blocks.append(current)
+            brackets.append(current)
 
     for block in blocks:
         degree_line = ""
@@ -559,7 +567,7 @@ def _extract_education(lines: list[str]) -> list[Education]:
 def _extract_skills(lines: list[str]) -> list[str]:
     """
     Parse skills section. Handles:
-    - "Category: skill1, skill2, skill3" — strips category label, splits on comma
+    - "Category: skill1, skill2, skill3" – strips category label, splits on comma
     - Bullet-separated lists
     - Plain comma/newline-separated lists
     """
@@ -570,7 +578,7 @@ def _extract_skills(lines: list[str]) -> list[str]:
         line_without_category = SKILL_CATEGORY_RE.sub("", line).strip()
 
         # Split on comma or bullet chars
-        raw_skills = re.split(r"[,|•●▪\t·◦\uf0b7\u00b7\u2022]+", line_without_category)
+        raw_skills = re.split(r"[,|•●▪\t·‣·•·‧]+", line_without_category)
         for sk in raw_skills:
             sk = sk.strip().strip(BULLET_CHARS + " ")
             # Filter: must be non-empty, reasonable length, not just a number
@@ -589,6 +597,30 @@ def _extract_skills(lines: list[str]) -> list[str]:
     return unique
 
 
+def _extract_skill_categories(lines: list[str]) -> dict[str, list[str]]:
+    """
+    Parse skills section preserving category labels.
+    Returns {category_name: [skills]} if the section uses "Category: s1, s2" format,
+    or an empty dict if no categories are detected.
+    """
+    categories: dict[str, list[str]] = {}
+
+    for line in lines:
+        cat_match = SKILL_CATEGORY_RE.match(line)
+        if not cat_match:
+            continue
+        # Category label without trailing colon/space
+        cat_name = cat_match.group(0).strip().rstrip(":").strip()
+        skills_part = line[cat_match.end():].strip()
+        raw_skills = re.split(r"[,|•●▪\t·‣·•·‧]+", skills_part)
+        skills = [s.strip().strip(BULLET_CHARS + " ") for s in raw_skills]
+        skills = [s for s in skills if s and 2 <= len(s) <= 60 and not re.match(r"^\d+$", s)]
+        if cat_name and skills:
+            categories[cat_name] = skills
+
+    return categories
+
+
 # ---------------------------------------------------------------------------
 # Achievements
 # ---------------------------------------------------------------------------
@@ -601,3 +633,66 @@ def _extract_achievements(lines: list[str]) -> list[str]:
         if bullet:
             achievements.append(bullet)
     return achievements
+
+
+# ---------------------------------------------------------------------------
+# Projects
+# ---------------------------------------------------------------------------
+
+def _extract_projects(lines: list[str]) -> list[Project]:
+    """
+    Parse projects section lines into a list of Project objects.
+
+    Expected format:
+        Project Title (may include technologies separated by | or -)
+        • bullet point
+        • bullet point
+        ...
+
+    Handles blank‑line separation between projects.
+    """
+    projects: list[Project] = []
+    if not lines:
+        return projects
+
+    # Helper to strip leading bullet-like characters
+    def strip_bullet(s: str) -> str:
+        # Remove leading bullet characters (including whitespace)
+        i = 0
+        while i < len(s) and s[i] in ALL_BULLETS:
+            i += 1
+        # Also strip any whitespace that may follow the bullet
+        while i < len(s) and s[i].isspace():
+            i += 1
+        return s[i:]
+
+    # Group lines into blocks separated by empty lines
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in lines:
+        if line == "":
+            if current:
+                blocks.append(current)
+                current = []
+        else:
+            current.append(line)
+    if current:
+        blocks.append(current)
+
+    for block in blocks:
+        if not block:
+            continue
+        # First non-empty line is the project title
+        title_line = block[0].strip()
+        # Remaining lines are description lines
+        desc_lines_raw = block[1:] if len(block) > 1 else []
+        desc_lines: list[str] = []
+        for raw in desc_lines_raw:
+            stripped = strip_bullet(raw)
+            if stripped:
+                desc_lines.append(stripped)
+        if not desc_lines:
+            desc_lines = ["(no description available)"]
+        projects.append(Project(name=title_line, description=desc_lines))
+
+    return projects

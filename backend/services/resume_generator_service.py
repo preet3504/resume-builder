@@ -4,14 +4,17 @@ Resume Generator Service for creating PDF and DOCX resumes.
 
 import os
 import uuid
+from datetime import datetime
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.pagesizes import LETTER
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, ListFlowable, ListItem, KeepTogether
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 
 from models.resume import ResumeData
 from core.config import settings
@@ -25,138 +28,266 @@ class ResumeGeneratorService:
         """Ensure the generated directory exists."""
         os.makedirs(settings.GENERATED_DIR, exist_ok=True)
 
+    @staticmethod
+    def _format_date_range(start, end) -> str:
+        """
+        Format date range for resume.
+        Accepts strings like "2020-01", "2020-01-15", or datetime.date/datetime.
+        Returns "Mon YYYY – Mon YYYY" or "Mon YYYY – Present".
+        """
+        def fmt(dt):
+            if isinstance(dt, str):
+                for fmt_str in ("%Y-%m-%d", "%Y-%m", "%m/%Y", "%b %Y"):
+                    try:
+                        dt = datetime.strptime(dt, fmt_str)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    return dt
+            if not isinstance(dt, datetime):
+                return str(dt)
+            return dt.strftime("%b %Y")
+
+        if not start:
+            return ""
+        start_str = fmt(start)
+        end_str = "Present" if not end else fmt(end)
+        if start_str and end_str:
+            return f"{start_str} – {end_str}"
+        return start_str
+
+    @staticmethod
+    def _pdf_hr():
+        """Return a full-width horizontal rule for use after PDF section headers."""
+        return HRFlowable(
+            width="100%",
+            thickness=0.75,
+            color=colors.black,
+            spaceBefore=1,
+            spaceAfter=4,
+        )
+
+    @staticmethod
+    def _docx_bottom_border(paragraph):
+        """Add a full-width bottom border line to a DOCX paragraph."""
+        pPr = paragraph._p.get_or_add_pPr()
+        pBdr = OxmlElement("w:pBdr")
+        bottom = OxmlElement("w:bottom")
+        bottom.set(qn("w:val"), "single")
+        bottom.set(qn("w:sz"), "6")      # border thickness (eighths of a point)
+        bottom.set(qn("w:space"), "1")
+        bottom.set(qn("w:color"), "000000")
+        pBdr.append(bottom)
+        pPr.append(pBdr)
+
     @classmethod
     def generate_pdf(cls, resume_data: ResumeData) -> str:
         """
         Generate an ATS-friendly PDF resume from ResumeData.
-
-        Args:
-            resume_data: The resume data to generate PDF from.
 
         Returns:
             The relative path to the generated PDF file (from backend root).
         """
         cls._ensure_generated_dir()
 
-        # Generate a unique filename
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.pdf"
         filepath = os.path.join(settings.GENERATED_DIR, filename)
 
-        # Create the PDF document
+        MARGIN = 36  # 0.5 inch in points
         doc = SimpleDocTemplate(
             filepath,
-            pagesize=letter,
-            rightMargin=0.75*inch,
-            leftMargin=0.75*inch,
-            topMargin=0.75*inch,
-            bottomMargin=0.75*inch
+            pagesize=LETTER,
+            leftMargin=MARGIN,
+            rightMargin=MARGIN,
+            topMargin=MARGIN,
+            bottomMargin=MARGIN,
+            title="Optimized Resume",
+            author=resume_data.contact_info.get("name", "Candidate"),
         )
 
-        # Get default styles and create custom ones
+        base_font = "Times-Roman"
+        base_size = 11
+        leading = int(base_size * 1.2)
+
         styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            spaceAfter=12,
-            alignment=1  # Center alignment
+        styles["Normal"].fontName = base_font
+        styles["Normal"].fontSize = base_size
+        styles["Normal"].leading = leading
+        styles["Normal"].alignment = TA_LEFT
+        styles["Normal"].spaceAfter = 6
+
+        styles.add(
+            ParagraphStyle(
+                name="Name",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=20,
+                leading=24,
+                alignment=TA_CENTER,
+                spaceAfter=6,
+                textColor=colors.black,
+            )
         )
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=14,
-            spaceAfter=6,
-            spaceBefore=12
+        styles.add(
+            ParagraphStyle(
+                name="Contact",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=10,
+                leading=12,
+                alignment=TA_CENTER,
+                spaceAfter=12,
+                textColor=colors.black,
+            )
         )
-        normal_style = styles['Normal']
-        normal_style.fontSize = 11
-        normal_style.spaceAfter = 6
+        styles.add(
+            ParagraphStyle(
+                name="SectionHeader",
+                parent=styles["Normal"],
+                fontName="Times-Bold",
+                fontSize=12,
+                leading=14,
+                spaceBefore=12,
+                spaceAfter=2,   # tight gap before the HR rule
+                textColor=colors.black,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                name="JobTitle",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=11,
+                leading=13,
+                spaceBefore=6,
+                spaceAfter=2,
+                textColor=colors.black,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                name="Company",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=10,
+                leading=12,
+                textColor=colors.darkgray,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                name="DateRange",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=9,
+                leading=11,
+                textColor=colors.grey,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                name="BulletStyle",
+                parent=styles["Normal"],
+                fontName=base_font,
+                fontSize=base_size,
+                leading=leading,
+                leftIndent=12,
+                bulletIndent=0,
+                bulletFontName=base_font,
+                bulletFontSize=base_size,
+                bulletOffsetY=2,
+                textColor=colors.black,
+            )
+        )
 
-        # Build the story (content)
-        story = []
+        flow = []
 
-        # Contact Info
-        contact_info = resume_data.contact_info
-        if contact_info:
-            # Assuming contact_info is a dict with keys like 'name', 'email', 'phone', etc.
-            contact_lines = []
-            if 'name' in contact_info:
-                contact_lines.append(f"<b>{contact_info['name']}</b>")
-            if 'email' in contact_info:
-                contact_lines.append(contact_info['email'])
-            if 'phone' in contact_info:
-                contact_lines.append(contact_info['phone'])
-            if 'location' in contact_info:
-                contact_lines.append(contact_info['location'])
+        # Name
+        name = resume_data.contact_info.get("name")
+        if name:
+            flow.append(Paragraph(name, styles["Name"]))
 
-            contact_text = " | ".join(contact_lines)
-            story.append(Paragraph(contact_text, title_style))
-            story.append(Spacer(1, 12))
+        # Contact line
+        contact_bits = []
+        for key in ["email", "phone", "location"]:
+            val = resume_data.contact_info.get(key)
+            if val:
+                contact_bits.append(val)
+        if contact_bits:
+            flow.append(Paragraph(" | ".join(contact_bits), styles["Contact"]))
 
-        # Summary
+        # Professional Summary
         if resume_data.summary:
-            story.append(Paragraph("Professional Summary", heading_style))
-            story.append(Paragraph(resume_data.summary, normal_style))
-            story.append(Spacer(1, 12))
+            flow.append(Paragraph("Professional Summary", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
+            flow.append(Paragraph(resume_data.summary, styles["Normal"]))
+            flow.append(Spacer(1, 6))
+
+        # Skills
+        if resume_data.skill_categories:
+            flow.append(Paragraph("Technical Skills", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
+            for cat_name, cat_skills in resume_data.skill_categories.items():
+                flow.append(Paragraph(f"<b>{cat_name}:</b> {', '.join(cat_skills)}", styles["Normal"]))
+            flow.append(Spacer(1, 6))
+        elif resume_data.skills:
+            flow.append(Paragraph("Skills", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
+            flow.append(Paragraph(", ".join(resume_data.skills), styles["Normal"]))
+            flow.append(Spacer(1, 6))
 
         # Experience
         if resume_data.experience:
-            story.append(Paragraph("Experience", heading_style))
+            flow.append(Paragraph("Experience", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
             for exp in resume_data.experience:
-                # Job title and company
-                job_title = f"<b>{exp.title}</b> - <b>{exp.company}</b>"
-                story.append(Paragraph(job_title, normal_style))
-                # Dates
-                date_range = f"{exp.start_date}"
-                if exp.end_date:
-                    date_range += f" - {exp.end_date}"
-                else:
-                    date_range += " - Present"
-                story.append(Paragraph(date_range, normal_style))
-                story.append(Spacer(1, 6))
-
-                # Description bullets
+                job_line = f"<b>{exp.title}</b> – <b>{exp.company}</b>"
+                flow.append(Paragraph(job_line, styles["JobTitle"]))
+                date_range = cls._format_date_range(exp.start_date, exp.end_date)
+                if date_range:
+                    flow.append(Paragraph(date_range, styles["DateRange"]))
                 if exp.description:
-                    bullet_items = []
-                    for desc in exp.description:
-                        bullet_items.append(ListItem(Paragraph(desc, normal_style)))
-                    story.append(ListFlowable(bullet_items, bulletType='bullet', start='•'))
-                story.append(Spacer(1, 12))
+                    bullets = exp.description if isinstance(exp.description, list) else [s.strip() for s in exp.description.split(".") if s.strip()]
+                    for bullet in bullets:
+                        flow.append(Paragraph(bullet, styles["BulletStyle"], bulletText="•"))
+                flow.append(Spacer(1, 6))
+
+        # Projects
+        if resume_data.projects:
+            flow.append(Paragraph("Projects", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
+            for proj in resume_data.projects:
+                flow.append(Paragraph(f"<b>{proj.name}</b>", styles["JobTitle"]))
+                if proj.description:
+                    bullets = proj.description if isinstance(proj.description, list) else [s.strip() for s in proj.description.split(".") if s.strip()]
+                    for bullet in bullets:
+                        flow.append(Paragraph(bullet, styles["BulletStyle"], bulletText="•"))
+                flow.append(Spacer(1, 6))
 
         # Education
         if resume_data.education:
-            story.append(Paragraph("Education", heading_style))
+            flow.append(Paragraph("Education", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
             for edu in resume_data.education:
-                edu_text = f"<b>{edu.degree}</b> - <b>{edu.institution}</b>"
-                story.append(Paragraph(edu_text, normal_style))
-                date_text = edu.graduation_year
-                if edu.gpa:
-                    date_text += f" | GPA: {edu.gpa}"
-                story.append(Paragraph(date_text, normal_style))
-                story.append(Spacer(1, 12))
-
-        # Skills
-        if resume_data.skills:
-            story.append(Paragraph("Skills", heading_style))
-            # Create a comma-separated list of skills
-            skills_text = ", ".join(resume_data.skills)
-            story.append(Paragraph(skills_text, normal_style))
-            story.append(Spacer(1, 12))
+                edu_line = f"<b>{edu.degree}</b> – <b>{edu.institution}</b>"
+                flow.append(Paragraph(edu_line, styles["JobTitle"]))
+                if getattr(edu, "graduation_year", None):
+                    flow.append(Paragraph(str(edu.graduation_year), styles["DateRange"]))
+                if getattr(edu, "gpa", None):
+                    flow.append(Paragraph(f"GPA: {edu.gpa}", styles["Normal"]))
+                flow.append(Spacer(1, 6))
 
         # Achievements
         if resume_data.achievements:
-            story.append(Paragraph("Achievements", heading_style))
-            bullet_items = []
+            flow.append(Paragraph("Achievements", styles["SectionHeader"]))
+            flow.append(cls._pdf_hr())
             for ach in resume_data.achievements:
-                bullet_items.append(ListItem(Paragraph(ach, normal_style)))
-            story.append(ListFlowable(bullet_items, bulletType='bullet', start='•'))
-            story.append(Spacer(1, 12))
+                flow.append(Paragraph(ach, styles["BulletStyle"], bulletText="•"))
+            flow.append(Spacer(1, 6))
 
-        # Build the PDF
-        doc.build(story)
-
-        # Return the relative path from the backend directory
+        doc.build(flow)
         return os.path.join(settings.GENERATED_DIR, filename)
 
     @classmethod
@@ -164,109 +295,151 @@ class ResumeGeneratorService:
         """
         Generate an ATS-friendly DOCX resume from ResumeData.
 
-        Args:
-            resume_data: The resume data to generate DOCX from.
-
         Returns:
             The relative path to the generated DOCX file (from backend root).
         """
         cls._ensure_generated_dir()
 
-        # Generate a unique filename
         file_id = str(uuid.uuid4())
         filename = f"{file_id}.docx"
         filepath = os.path.join(settings.GENERATED_DIR, filename)
 
-        # Create the document
         doc = Document()
 
-        # Set margins (optional, but good practice)
-        sections = doc.sections
-        for section in sections:
-            section.top_margin = Inches(0.75)
-            section.bottom_margin = Inches(0.75)
-            section.left_margin = Inches(0.75)
-            section.right_margin = Inches(0.75)
+        for section in doc.sections:
+            section.top_margin = Inches(0.5)
+            section.bottom_margin = Inches(0.5)
+            section.left_margin = Inches(0.5)
+            section.right_margin = Inches(0.5)
 
-        # Add content
+        def add_run(paragraph, text, size=None, bold=False, italic=False, color=None):
+            run = paragraph.add_run(text)
+            if size is not None:
+                run.font.size = Pt(size)
+            run.font.bold = bold
+            run.font.italic = italic
+            if color is not None:
+                run.font.color.rgb = color
+            run.font.name = 'Times New Roman'
+            return run
 
-        # Contact Info
-        contact_info = resume_data.contact_info
-        if contact_info:
-            contact_parts = []
-            if 'name' in contact_info:
-                contact_parts.append(contact_info['name'])
-            if 'email' in contact_info:
-                contact_parts.append(contact_info['email'])
-            if 'phone' in contact_info:
-                contact_parts.append(contact_info['phone'])
-            if 'location' in contact_info:
-                contact_parts.append(contact_info['location'])
+        def add_section_header(title):
+            """Add a bold section heading followed by a full-width bottom border line."""
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(12)
+            p.paragraph_format.space_after = Pt(2)
+            add_run(p, title, size=12, bold=True)
+            cls._docx_bottom_border(p)
+            return p
 
-            contact_line = " | ".join(contact_parts)
-            p = doc.add_paragraph(contact_line)
+        # ---- Name (centered, 20pt, bold) ---------------------------
+        name = resume_data.contact_info.get("name")
+        if name:
+            p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            # Make the name bold (if we have it)
-            # Note: This is a simple approach; for more control, we could use runs.
-            # For simplicity, we'll just make the whole line bold if there's a name.
-            # But let's not overcomplicate for now.
-            doc.add_paragraph()  # Add a blank line after contact
+            add_run(p, name, size=20, bold=True)
+            doc.add_paragraph()
 
-        # Summary
+        # ---- Contact line (centered, 10pt) -------------------------
+        contact_parts = []
+        for key in ["email", "phone", "location"]:
+            val = resume_data.contact_info.get(key)
+            if val:
+                contact_parts.append(val)
+        if contact_parts:
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            add_run(p, " | ".join(contact_parts), size=10)
+            doc.add_paragraph()
+
+        # ---- Professional Summary ----------------------------------
         if resume_data.summary:
-            doc.add_heading('Professional Summary', level=2)
-            doc.add_paragraph(resume_data.summary)
-            doc.add_paragraph()  # Blank line
+            add_section_header("Professional Summary")
+            p = doc.add_paragraph(resume_data.summary)
+            p.paragraph_format.space_after = Pt(6)
+            p.paragraph_format.line_spacing = 1.15
+            for run in p.runs:
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(11)
 
-        # Experience
-        if resume_data.experience:
-            doc.add_heading('Experience', level=2)
-            for exp in resume_data.experience:
-                # Job title and company
+        # ---- Skills ------------------------------------------------
+        if resume_data.skill_categories:
+            add_section_header("Technical Skills")
+            for cat_name, cat_skills in resume_data.skill_categories.items():
                 p = doc.add_paragraph()
-                p.add_run(f"{exp.title} - {exp.company}").bold = True
-                # Dates
-                date_range = f"{exp.start_date}"
-                if exp.end_date:
-                    date_range += f" - {exp.end_date}"
-                else:
-                    date_range += " - Present"
-                p.add_run(f"\t{date_range}").italic = True
-                p.add_run('\n')
+                p.paragraph_format.space_after = Pt(3)
+                p.paragraph_format.line_spacing = 1.15
+                add_run(p, f"{cat_name}: ", size=11, bold=True)
+                add_run(p, ", ".join(cat_skills), size=11)
+        elif resume_data.skills:
+            add_section_header("Skills")
+            skills_text = ", ".join(resume_data.skills)
+            p = doc.add_paragraph(skills_text)
+            p.paragraph_format.space_after = Pt(6)
+            p.paragraph_format.line_spacing = 1.15
+            for run in p.runs:
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(11)
 
-                # Description bullets
+        # ---- Experience --------------------------------------------
+        if resume_data.experience:
+            add_section_header("Experience")
+            for exp in resume_data.experience:
+                p = doc.add_paragraph()
+                add_run(p, f"{exp.title} – ", size=11, bold=True)
+                add_run(p, exp.company, size=11, bold=True)
+                date_range = cls._format_date_range(exp.start_date, exp.end_date)
+                if date_range:
+                    p.add_run("\t")
+                    add_run(p, date_range, size=9, italic=True, color=RGBColor(85, 85, 85))
                 if exp.description:
-                    for desc in exp.description:
-                        bullet = doc.add_paragraph(desc, style='List Bullet')
-                doc.add_paragraph()  # Blank line between jobs
+                    bullets = exp.description if isinstance(exp.description, list) else [s.strip() for s in exp.description.split(".") if s.strip()]
+                    for bullet in bullets:
+                        bp = doc.add_paragraph(style='List Bullet')
+                        bp.paragraph_format.left_indent = Inches(0.25)
+                        bp.paragraph_format.line_spacing = 1.15
+                        add_run(bp, bullet, size=11)
+                doc.add_paragraph()
 
-        # Education
+        # ---- Projects ----------------------------------------------
+        if resume_data.projects:
+            add_section_header("Projects")
+            for proj in resume_data.projects:
+                p = doc.add_paragraph()
+                add_run(p, proj.name, size=11, bold=True)
+                if proj.description:
+                    bullets = proj.description if isinstance(proj.description, list) else [s.strip() for s in proj.description.split(".") if s.strip()]
+                    for bullet in bullets:
+                        bp = doc.add_paragraph(style='List Bullet')
+                        bp.paragraph_format.left_indent = Inches(0.25)
+                        bp.paragraph_format.line_spacing = 1.15
+                        add_run(bp, bullet, size=11)
+                doc.add_paragraph()
+
+        # ---- Education ---------------------------------------------
         if resume_data.education:
-            doc.add_heading('Education', level=2)
+            add_section_header("Education")
             for edu in resume_data.education:
                 p = doc.add_paragraph()
-                p.add_run(f"{edu.degree} - {edu.institution}").bold = True
-                edu_text = edu.graduation_year
-                if edu.gpa:
-                    edu_text += f" | GPA: {edu.gpa}"
-                p.add_run(f"\t{edu_text}").italic = True
-                doc.add_paragraph()  # Blank line
+                add_run(p, f"{edu.degree} – ", size=11, bold=True)
+                add_run(p, edu.institution, size=11, bold=True)
+                if getattr(edu, "graduation_year", None):
+                    p = doc.add_paragraph()
+                    add_run(p, str(edu.graduation_year), size=9, italic=True)
+                if getattr(edu, "gpa", None):
+                    p = doc.add_paragraph()
+                    add_run(p, f"GPA: {edu.gpa}", size=11)
+                doc.add_paragraph()
 
-        # Skills
-        if resume_data.skills:
-            doc.add_heading('Skills', level=2)
-            skills_text = ", ".join(resume_data.skills)
-            doc.add_paragraph(skills_text)
-            doc.add_paragraph()  # Blank line
-
-        # Achievements
+        # ---- Achievements ------------------------------------------
         if resume_data.achievements:
-            doc.add_heading('Achievements', level=2)
+            add_section_header("Achievements")
             for ach in resume_data.achievements:
-                doc.add_paragraph(ach, style='List Bullet')
+                p = doc.add_paragraph(style='List Bullet')
+                p.paragraph_format.left_indent = Inches(0.25)
+                p.paragraph_format.line_spacing = 1.15
+                add_run(p, ach, size=11)
+            doc.add_paragraph()
 
-        # Save the document
         doc.save(filepath)
-
-        # Return the relative path from the backend directory
         return os.path.join(settings.GENERATED_DIR, filename)

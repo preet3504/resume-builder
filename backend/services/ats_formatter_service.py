@@ -30,13 +30,24 @@ class ATSFormatterService:
             
         formatted_contact_info = cls._format_contact_info(resume_data.contact_info)
 
+        # Sanitize skills within each category as well
+        formatted_skill_categories = None
+        if resume_data.skill_categories:
+            formatted_skill_categories = {
+                cat: cls._sanitize_list(skills)
+                for cat, skills in resume_data.skill_categories.items()
+                if cls._sanitize_list(skills)
+            } or None
+
         return ResumeData(
             contact_info=formatted_contact_info,
             summary=formatted_summary,
             experience=formatted_experience,
             education=formatted_education,
             skills=formatted_skills,
-            achievements=formatted_achievements
+            skill_categories=formatted_skill_categories,
+            achievements=formatted_achievements,
+            projects=resume_data.projects,
         )
 
     @classmethod
