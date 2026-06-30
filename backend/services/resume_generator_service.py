@@ -338,7 +338,6 @@ class ResumeGeneratorService:
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             add_run(p, name, size=20, bold=True)
-            doc.add_paragraph()
 
         # ---- Contact line (centered, 10pt) -------------------------
         contact_parts = []
@@ -350,7 +349,6 @@ class ResumeGeneratorService:
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             add_run(p, " | ".join(contact_parts), size=10)
-            doc.add_paragraph()
 
         # ---- Professional Summary ----------------------------------
         if resume_data.summary:
@@ -386,11 +384,13 @@ class ResumeGeneratorService:
             add_section_header("Experience")
             for exp in resume_data.experience:
                 p = doc.add_paragraph()
+                p.paragraph_format.space_after = Pt(2)
                 add_run(p, f"{exp.title} – ", size=11, bold=True)
                 add_run(p, exp.company, size=11, bold=True)
                 date_range = cls._format_date_range(exp.start_date, exp.end_date)
                 if date_range:
-                    p.add_run("\t")
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_after = Pt(2)
                     add_run(p, date_range, size=9, italic=True, color=RGBColor(85, 85, 85))
                 if exp.description:
                     bullets = exp.description if isinstance(exp.description, list) else [s.strip() for s in exp.description.split(".") if s.strip()]
@@ -421,10 +421,12 @@ class ResumeGeneratorService:
             add_section_header("Education")
             for edu in resume_data.education:
                 p = doc.add_paragraph()
+                p.paragraph_format.space_after = Pt(2)
                 add_run(p, f"{edu.degree} – ", size=11, bold=True)
                 add_run(p, edu.institution, size=11, bold=True)
                 if getattr(edu, "graduation_year", None):
                     p = doc.add_paragraph()
+                    p.paragraph_format.space_after = Pt(2)
                     add_run(p, str(edu.graduation_year), size=9, italic=True)
                 if getattr(edu, "gpa", None):
                     p = doc.add_paragraph()

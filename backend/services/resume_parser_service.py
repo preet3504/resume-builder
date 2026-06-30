@@ -72,8 +72,22 @@ DATE_RANGE_RE = re.compile(
     r"Dec(?:ember)?)?\s*,?\s*\d{4}|Present|Current|Now)",
     re.IGNORECASE,
 )
+
+# Month Year patterns like "Jan 2020", "January 2020", "2020"
+MONTH_YEAR_RE = re.compile(
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
+    r"Dec(?:ember)?)?\s*,?\s*\d{4}",
+    re.IGNORECASE,
+)
+# Graduation date patterns like "May 2020", "May, 2020", "05/2020", "2020"
+GRAD_DATE_RE = re.compile(
+    r"(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
+    r"Dec(?:ember)?)?\s*,?\s*\d{4}|\d{1,2}/\d{4}|\d{4})"
+)
 GPA_RE = re.compile(r"GPA\s*:?\s*(\d\.\d{1,2})", re.IGNORECASE)
-GRAD_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+# GRAD_YEAR_RE replaced by MONTH_YEAR_RE for more complete date extraction
 DEGREE_KEYWORDS = [
     "bachelor", "master", "phd", "doctorate", "b.s.", "m.s.", "b.e.", "m.e.",
     "b.tech", "m.tech", "b.sc", "m.sc", "mba", "b.a.", "m.a.", "associate",
@@ -529,11 +543,11 @@ def _extract_education(lines: list[str]) -> list[Education]:
                     gpa = float(gpa_match.group(1))
                 except ValueError:
                     pass
-            # Extract graduation year
+            # Extract graduation date (month and year if available)
             if not grad_year:
-                year_match = GRAD_YEAR_RE.search(bl)
-                if year_match:
-                    grad_year = year_match.group()
+                date_match = MONTH_YEAR_RE.search(bl)
+                if date_match:
+                    grad_year = date_match.group()
 
         # Institution: first non-degree, non-location, non-date line
         for bl in block:
@@ -542,7 +556,8 @@ def _extract_education(lines: list[str]) -> list[Education]:
                 continue
             if _is_location_line(stripped):
                 continue
-            if GRAD_YEAR_RE.search(stripped) and len(stripped) <= 12:
+            # Skip lines that are just dates (month/year format)
+            if MONTH_YEAR_RE.search(stripped) and len(stripped) <= 12:
                 continue  # skip pure date lines
             if stripped:
                 institution_line = stripped
