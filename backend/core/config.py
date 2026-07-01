@@ -3,6 +3,9 @@
 import os
 from pydantic_settings import BaseSettings
 
+# Detect Vercel serverless environment (Vercel sets VERCEL=1 automatically)
+IS_VERCEL = os.environ.get("VERCEL", "") == "1"
+
 class Settings(BaseSettings):
     # API settings
     API_V1_STR: str = "/api/v1"
@@ -21,9 +24,9 @@ class Settings(BaseSettings):
     # a value like ".pdf,.docx". Keep it a str and expose a parsed set below.
     ALLOWED_EXTENSIONS: str = ".pdf,.docx"
 
-    # File storage
-    UPLOAD_DIR: str = "uploads"
-    GENERATED_DIR: str = "generated"
+    # File storage — use /tmp on Vercel (only writable dir in serverless)
+    UPLOAD_DIR: str = "/tmp/uploads" if IS_VERCEL else "uploads"
+    GENERATED_DIR: str = "/tmp/generated" if IS_VERCEL else "generated"
 
     @property
     def allowed_extensions_set(self) -> set[str]:
@@ -34,3 +37,4 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 settings = Settings()
+
