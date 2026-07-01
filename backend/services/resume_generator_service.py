@@ -3,7 +3,7 @@ Resume Generator Service for creating PDF and DOCX resumes.
 """
 
 import os
-import uuid
+import re
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
@@ -27,6 +27,36 @@ class ResumeGeneratorService:
     def _ensure_generated_dir():
         """Ensure the generated directory exists."""
         os.makedirs(settings.GENERATED_DIR, exist_ok=True)
+
+    @staticmethod
+    def _build_filename(resume_data: "ResumeData", ext: str) -> str:
+        """
+        Build a human-readable, filesystem-safe filename.
+        Format: <ContactName>_<JobTitle>.<ext>
+        Example: John_Doe_Software_Engineer.pdf
+        If a file with the same name already exists it is simply overwritten.
+        """
+        # --- Contact name ---
+        raw_name = resume_data.contact_info.get("name", "").strip()
+        # --- Most recent job title (first experience entry after tailoring) ---
+        raw_title = ""
+        if resume_data.experience:
+            raw_title = resume_data.experience[0].title.strip()
+
+        def slugify(text: str) -> str:
+            """Replace spaces with underscores and strip unsafe characters."""
+            text = re.sub(r"[^\w\s\-]", "", text)   # keep word chars, spaces, hyphens
+            text = re.sub(r"\s+", "_", text.strip())  # spaces → underscores
+            return text[:50]  # cap length per segment
+
+        name_slug = slugify(raw_name) or "Resume"
+        title_slug = slugify(raw_title)
+
+        parts = [name_slug]
+        if title_slug:
+            parts.append(title_slug)
+
+        return "_".join(parts) + f".{ext}"
 
     @staticmethod
     def _format_date_range(start, end) -> str:
@@ -91,8 +121,7 @@ class ResumeGeneratorService:
         """
         cls._ensure_generated_dir()
 
-        file_id = str(uuid.uuid4())
-        filename = f"{file_id}.pdf"
+        filename = cls._build_filename(resume_data, "pdf")
         filepath = os.path.join(settings.GENERATED_DIR, filename)
 
         MARGIN = 36  # 0.5 inch in points
@@ -300,8 +329,7 @@ class ResumeGeneratorService:
         """
         cls._ensure_generated_dir()
 
-        file_id = str(uuid.uuid4())
-        filename = f"{file_id}.docx"
+        filename = cls._build_filename(resume_data, "docx")
         filepath = os.path.join(settings.GENERATED_DIR, filename)
 
         doc = Document()
