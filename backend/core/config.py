@@ -1,10 +1,9 @@
 # Configuration settings for the ResumeTailor API
 
 import os
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
-# Detect Vercel serverless environment (Vercel sets VERCEL=1 automatically)
-IS_VERCEL = os.environ.get("VERCEL", "") == "1"
 
 class Settings(BaseSettings):
     # API settings
@@ -24,9 +23,24 @@ class Settings(BaseSettings):
     # a value like ".pdf,.docx". Keep it a str and expose a parsed set below.
     ALLOWED_EXTENSIONS: str = ".pdf,.docx"
 
-    # File storage — use /tmp on Vercel (only writable dir in serverless)
-    UPLOAD_DIR: str = "/tmp/uploads" if IS_VERCEL else "uploads"
-    GENERATED_DIR: str = "/tmp/generated" if IS_VERCEL else "generated"
+    # File storage — defaults for local dev; model_validator overrides to
+    # /tmp on Vercel where only /tmp is writable (enforced AFTER env loading
+    # so no dashboard env var can accidentally override this).
+    UPLOAD_DIR: str = "uploads"
+    GENERATED_DIR: str = "generated"
+
+    @model_validator(mode="after")
+    def enforce_tmp_on_vercel(self) -> "Settings":
+        """
+        Vercel serverless functions can only write to /tmp.
+        Vercel automatically sets VERCEL=1 at runtime.
+        This validator runs after all env-var sources are merged, so it
+        unconditionally redirects storage dirs to /tmp — nothing can override it.
+        """
+        if os.environ.get("VERCEL") == "1":
+            self.UPLOAD_DIR = "/tmp/uploads"
+            self.GENERATED_DIR = "/tmp/generated"
+        return self
 
     @property
     def allowed_extensions_set(self) -> set[str]:
@@ -36,5 +50,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+
 settings = Settings()
+
 
