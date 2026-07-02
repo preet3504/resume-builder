@@ -29,7 +29,6 @@ export default function ResumeUpload({ onResumeChange }: { onResumeChange: (file
     setDragActive(false);
     const file = e.dataTransfer.files?.[0] ?? null;
     if (file) {
-      // Validate file type and size (same as in input change)
       const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!validTypes.includes(file.type)) {
         alert('Please upload a PDF or DOCX file');
@@ -44,27 +43,30 @@ export default function ResumeUpload({ onResumeChange }: { onResumeChange: (file
   };
 
   return (
-    <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700">Resume Upload</label>
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl font-bold tracking-tight text-white">Optimize Your Professional Narrative</h1>
+        <p className="text-slate-400 max-w-xl mx-auto">Upload your current resume to begin the alignment process. We support PDF and DOCX formats up to 10MB.</p>
+      </div>
+
       <div
-        className={`mt-1 flex flex-col space-y-2 ${dragActive ? 'border-blue-500' : 'border-2 border-dashed border-gray-300'} rounded-lg px-4 py-6 text-center hover:border-gray-400 transition-colors`}
+        id="drop-zone"
+        className={`content-container p-16 border-2 border-dashed ${dragActive ? 'border-primary bg-white/[0.05]' : 'border-white/10'} hover:border-primary/50 hover:bg-white/[0.02] cursor-pointer transition-all group flex flex-col items-center justify-center text-center`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={() => document.getElementById('resume-upload')?.click()}
       >
-        <div className="flex flex-col items-center">
-          <svg className="h-8 w-8 text-gray-400 mb-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 29h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M9 7h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M18 4v4a2 2 0 002 2v10a2 2 0 00-2 2h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M6 4v4a2 2 0 00-2 2v10a2 2 0 002 2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M9 16V10L12 13l3-3v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <div className="text-sm text-gray-600">Drag & drop your resume here, or</div>
-          <label htmlFor="resume-upload" className="text-blue-600 hover:text-blue-500 cursor-inline">
-            Browse files
-          </label>
+        <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+          <i className="ti ti-file-upload text-3xl text-primary"></i>
         </div>
+        <h2 className="text-xl font-semibold mb-2">
+          {selectedFile ? `Selected: ${selectedFile.name}` : 'Drag and drop your resume'}
+        </h2>
+        <p className="text-sm text-slate-500 mb-8">or click to browse from your computer</p>
+        <button type="button" className="btn-primary">
+          {selectedFile ? 'Change File' : 'Select File'}
+        </button>
         <input
           id="resume-upload"
           type="file"
@@ -86,14 +88,6 @@ export default function ResumeUpload({ onResumeChange }: { onResumeChange: (file
             }
           }}
         />
-        <p className="text-xs text-gray-500">
-          PDF or DOCX format, max 10MB
-        </p>
-        {selectedFile && (
-          <p className="mt-2 text-sm text-green-600">
-            Selected: {selectedFile.name}
-          </p>
-        )}
       </div>
     </div>
   );

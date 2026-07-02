@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import ResumeUpload from '@/components/ResumeUpload';
 import JobDescriptionInput from '@/components/JobDescriptionInput';
-import GenerateButton from '@/components/GenerateButton';
-import ProcessingStatus from '@/components/ProcessingStatus';
-import DownloadButtons from '@/components/DownloadButtons';
+import UnifiedResultCard from '@/components/UnifiedResultCard';
 
 export default function Home() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -15,52 +13,45 @@ export default function Home() {
   const [pdfFileId, setPdfFileId] = useState<string | null>(null);
   const [docxFileId, setDocxFileId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Handle resume upload
   const handleResumeChange = (file: File | null) => {
     setResumeFile(file);
-    setFormError(null); // Clear error when user uploads a new file
+    setFormError(null);
+    if (file) {
+      setTimeout(() => setCurrentStep(2), 500);
+    }
   };
 
   // Handle job description change
   const handleJobDescriptionChange = (text: string) => {
     setJobDescription(text);
-    setFormError(null); // Clear error when user types
+    setFormError(null);
   };
 
-  // Handle generate button click
+  // Handle generate API call
   const handleGenerateClick = async () => {
-    if (!resumeFile) {
-      setFormError('Please upload a resume');
-      return;
-    }
+    if (!resumeFile || !jobDescription.trim()) return;
 
-    if (!jobDescription.trim()) {
-      setFormError('Please enter a job description');
-      return;
-    }
-
-    // Clear previous state before the API call
     setFormError(null);
     setIsGenerated(false);
     setIsGenerating(true);
+    setCurrentStep(3);
 
-    // Create form data
     const formData = new FormData();
     formData.append('resume', resumeFile);
     formData.append('job_description', jobDescription);
 
     try {
-      // Call the API
       const response = await fetch(`${apiUrl}/api/v1/generate-optimized-resume`, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        // FastAPI returns errors under `detail`; fall back to `message`/status text.
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || errorData.message || response.statusText);
       }
@@ -71,67 +62,82 @@ export default function Home() {
       setIsGenerated(true);
     } catch (err: any) {
       setFormError(err.message || 'Unknown error');
-    } finally {
+      // If error occurs, stay on current step but show error
       setIsGenerating(false);
+    } finally {
+      // Don't set isGenerating false here immediately if successful, 
+      // let UnifiedResultCard handle transition
     }
   };
 
-  // Reset form
   const handleReset = () => {
     setResumeFile(null);
     setJobDescription('');
     setIsGenerated(false);
+    setIsGenerating(false);
     setPdfFileId(null);
     setDocxFileId(null);
     setFormError(null);
+    setCurrentStep(1);
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
-          ResumeTailor
-        </h1>
-        <p className="text-center text-gray-600 mb-10">
-          Create optimized, ATS-friendly resumes tailored to your target job
-          description
-        </p>
+    <div className="min-h-screen flex flex-col bg-bg">
+      {/* Header / Navigation */}
+      <header className="border-b border-white/5 py-6 px-8 flex justify-between items-center bg-black/20 backdrop-blur-sm sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
+            <i className="ti ti-bolt text-black text-xl"></i>
+          </div>
+          <span className="font-bold text-xl tracking-tight text-white">Tailor<span className="text-primary">AI</span></span>
+        </div>
 
-        {(formError) && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+        <nav className="hidden md:flex items-center gap-12">
+          <div className="flex items-center gap-3">
+            <div className={`step-dot ${currentStep >= 1 ? 'active' : ''}`}></div>
+            <span className={`text-sm font-medium transition-opacity ${currentStep >= 1 ? 'opacity-100' : 'opacity-40'}`}>Resume</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`step-dot ${currentStep >= 2 ? 'active' : ''}`}></div>
+            <span className={`text-sm font-medium transition-opacity ${currentStep >= 2 ? 'opacity-100' : 'opacity-40'}`}>Optimize</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`step-dot ${currentStep >= 3 ? 'active' : ''}`}></div>
+            <span className={`text-sm font-medium transition-opacity ${currentStep >= 3 ? 'opacity-100' : 'opacity-40'}`}>Download</span>
+          </div>
+        </nav>
+      </header>
+
+      <main className="flex-grow flex flex-col items-center justify-center p-6 max-w-5xl mx-auto w-full">
+        {formError && (
+          <div className="w-full max-w-2xl mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400 flex items-center gap-3">
+            <i className="ti ti-alert-circle text-lg"></i>
             {formError}
           </div>
         )}
 
-        <div className="space-y-8">
+        {currentStep === 1 && (
           <ResumeUpload onResumeChange={handleResumeChange} />
+        )}
+
+        {currentStep === 2 && (
           <JobDescriptionInput
             onJobDescriptionChange={handleJobDescriptionChange}
             value={jobDescription}
+            onTailor={handleGenerateClick}
           />
-          <div className="flex flex-col sm:flex-row gap-4">
-            <GenerateButton
-              onClick={handleGenerateClick}
-              isLoading={isGenerating}
-              disabled={!resumeFile || !jobDescription.trim() || isGenerating}
-            />
-            <ProcessingStatus
-              isGenerating={isGenerating}
-              isGenerated={isGenerated}
-            />
-          </div>
-          {isGenerated && (
-            <div className="mt-8 pt-4 border-t border-gray-200">
-              <h2 className="text-xl font-semibold mb-4">Your resume is ready!</h2>
-              <DownloadButtons
-                pdfFileId={pdfFileId}
-                docxFileId={docxFileId}
-                onReset={handleReset}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </main>
+        )}
+
+        {currentStep === 3 && (
+          <UnifiedResultCard
+            isGenerating={isGenerating}
+            isGenerated={isGenerated}
+            pdfFileId={pdfFileId}
+            docxFileId={docxFileId}
+            onReset={handleReset}
+          />
+        )}
+      </main>
+    </div>
   );
 }

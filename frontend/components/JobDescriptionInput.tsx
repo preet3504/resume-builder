@@ -2,33 +2,45 @@
 
 export default function JobDescriptionInput({
   onJobDescriptionChange,
-  value
+  value,
+  onTailor
 }: {
   onJobDescriptionChange: (text: string) => void;
   value: string;
+  onTailor: () => void;
 }) {
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onJobDescriptionChange(e.target.value);
   };
 
   return (
-    <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700">Job Description</label>
-      <div className="mt-1 relative">
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl font-bold tracking-tight text-white">Define the Target Role</h1>
+        <p className="text-slate-400 max-w-xl mx-auto">Paste the job description below. Our AI will analyze the key requirements and optimize your resume accordingly.</p>
+      </div>
+
+      <div className="content-container overflow-hidden">
         <textarea
           value={value}
           onChange={handleChange}
-          rows={8}
-          placeholder="Paste the complete job description here..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full h-80 bg-transparent p-10 outline-none border-none text-lg resize-none custom-scrollbar placeholder:text-slate-600"
+          placeholder="Paste the job description here..."
         />
-        <div className="absolute bottom-2 right-2 text-sm text-gray-500">
-          {value.length}/10000 characters
+        <div className="flex flex-col sm:flex-row justify-between items-center px-10 py-6 bg-white/[0.02] border-t border-white/5 gap-4">
+          <span className="text-sm font-mono text-slate-500">
+            {value.length.toLocaleString()} / 10,000 characters
+          </span>
+          <button
+            onClick={onTailor}
+            disabled={!value.trim()}
+            className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
+          >
+            <span>Tailor Resume</span>
+            <i className="ti ti-arrow-right"></i>
+          </button>
         </div>
       </div>
-      <p className="text-xs text-gray-500 mt-1">
-        Include responsibilities, required skills, qualifications, and any specific keywords
-      </p>
     </div>
   );
 }
